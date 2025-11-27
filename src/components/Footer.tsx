@@ -1,5 +1,5 @@
 import React from 'react';
-import { WhatsappLogo, EnvelopeSimple } from 'phosphor-react';
+
 
 const Footer: React.FC = () => {
     return (

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { UserFocus, Clock, ShieldCheck, BellRinging, ChartLineUp, Users, WhatsappLogo, Camera } from 'phosphor-react';
+import { UserFocus, Clock, ShieldCheck, ChartLineUp, WhatsappLogo, Camera } from 'phosphor-react';
 
 const features = [
     {
