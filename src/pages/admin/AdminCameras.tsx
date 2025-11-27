@@ -44,7 +44,12 @@ const AdminCameras: React.FC = () => {
     useEffect(() => {
         if (isPlayerOpen && selectedCamera?.url_m3u8 && videoRef.current) {
             const video = videoRef.current;
-            const src = selectedCamera.url_m3u8;
+            let src = selectedCamera.url_m3u8;
+
+            // Use proxy if running on Vercel (HTTPS) and trying to access HTTP camera
+            if (window.location.protocol === 'https:' && src.startsWith('http://78.46.228.35:8002')) {
+                src = src.replace('http://78.46.228.35:8002', '/camera-proxy');
+            }
 
             if (Hls.isSupported()) {
                 if (hlsRef.current) {
