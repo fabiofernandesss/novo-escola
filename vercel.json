@@ -1,7 +1,11 @@
 {
     "rewrites": [
         {
-            "source": "/camera-proxy/:match*",
+            "source": "/camera-proxy-8001/:match*",
+            "destination": "http://78.46.228.35:8001/:match*"
+        },
+        {
+            "source": "/camera-proxy-8002/:match*",
             "destination": "http://78.46.228.35:8002/:match*"
         },
         {

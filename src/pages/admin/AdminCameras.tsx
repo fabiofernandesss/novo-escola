@@ -47,15 +47,25 @@ const AdminCameras: React.FC = () => {
             let src = selectedCamera.url_m3u8;
 
             // Use proxy if running on Vercel (HTTPS) and trying to access HTTP camera
-            if (window.location.protocol === 'https:' && src.startsWith('http://78.46.228.35:8002')) {
-                src = src.replace('http://78.46.228.35:8002', '/camera-proxy');
+            if (window.location.protocol === 'https:' && src.includes('http://78.46.228.35')) {
+                if (src.includes(':8001')) {
+                    src = src.replace('http://78.46.228.35:8001', '/camera-proxy-8001');
+                } else if (src.includes(':8002')) {
+                    src = src.replace('http://78.46.228.35:8002', '/camera-proxy-8002');
+                }
             }
 
             if (Hls.isSupported()) {
                 if (hlsRef.current) {
                     hlsRef.current.destroy();
                 }
-                const hls = new Hls();
+                const hls = new Hls({
+                    maxBufferLength: 30,
+                    maxMaxBufferLength: 600,
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 90
+                });
                 hlsRef.current = hls;
                 hls.loadSource(src);
                 hls.attachMedia(video);
