@@ -6,8 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 type Grade = {
     id: string;
     nome: string;
-    descricao?: string;
-    ordem?: number;
+    nivel: string;
     criado_em: string;
 };
 
@@ -33,7 +32,7 @@ const AdminGrades: React.FC = () => {
         const { data, error } = await supabase
             .from('series')
             .select('*')
-            .order('ordem', { ascending: true });
+            .order('nome', { ascending: true });
 
         if (error) console.error('Error fetching grades:', error);
         else setGrades(data || []);
@@ -44,7 +43,8 @@ const AdminGrades: React.FC = () => {
         let filtered = [...grades];
         if (searchTerm) {
             filtered = filtered.filter((grade) =>
-                grade.nome.toLowerCase().includes(searchTerm.toLowerCase())
+                grade.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                grade.nivel?.toLowerCase().includes(searchTerm.toLowerCase())
             );
         }
         setFilteredGrades(filtered);
@@ -58,7 +58,7 @@ const AdminGrades: React.FC = () => {
 
     const handleNew = () => {
         setEditingGrade(null);
-        setFormData({ nome: '', descricao: '', ordem: 1 });
+        setFormData({ nome: '', nivel: '' });
         setIsModalOpen(true);
     };
 
@@ -72,12 +72,19 @@ const AdminGrades: React.FC = () => {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Only send valid fields
+        const dataToSave = {
+            nome: formData.nome,
+            nivel: formData.nivel
+        };
+
         if (editingGrade) {
-            const { error } = await supabase.from('series').update(formData).eq('id', editingGrade.id);
+            const { error } = await supabase.from('series').update(dataToSave).eq('id', editingGrade.id);
             if (error) alert('Erro: ' + error.message);
             else { setIsModalOpen(false); fetchGrades(); }
         } else {
-            const { error } = await supabase.from('series').insert([formData]);
+            const { error } = await supabase.from('series').insert([dataToSave]);
             if (error) alert('Erro: ' + error.message);
             else { setIsModalOpen(false); fetchGrades(); }
         }
@@ -98,7 +105,7 @@ const AdminGrades: React.FC = () => {
             <div className="bg-white rounded-xl shadow-sm border p-4 mb-6">
                 <div className="relative">
                     <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                    <input type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none" />
+                    <input type="text" placeholder="Buscar por nome ou nível..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none" />
                 </div>
             </div>
 
@@ -107,22 +114,20 @@ const AdminGrades: React.FC = () => {
                     <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b">
                         <tr>
                             <th className="p-4 font-semibold text-gray-700 text-left">Nome</th>
-                            <th className="p-4 font-semibold text-gray-700 text-left">Descrição</th>
-                            <th className="p-4 font-semibold text-gray-700 text-left">Ordem</th>
+                            <th className="p-4 font-semibold text-gray-700 text-left">Nível</th>
                             <th className="p-4 font-semibold text-gray-700 text-right">Ações</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y">
                         {loading ? (
-                            <tr><td colSpan={4} className="p-8 text-center"><div className="flex items-center justify-center gap-2"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[hsl(var(--brand-blue))]"></div>Carregando...</div></td></tr>
+                            <tr><td colSpan={3} className="p-8 text-center"><div className="flex items-center justify-center gap-2"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[hsl(var(--brand-blue))]"></div>Carregando...</div></td></tr>
                         ) : filteredGrades.length === 0 ? (
-                            <tr><td colSpan={4} className="p-8 text-center text-gray-500">Nenhuma série encontrada</td></tr>
+                            <tr><td colSpan={3} className="p-8 text-center text-gray-500">Nenhuma série encontrada</td></tr>
                         ) : (
                             filteredGrades.map((grade, i) => (
                                 <motion.tr key={grade.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }} className="hover:bg-gray-50">
                                     <td className="p-4 font-medium text-gray-900">{grade.nome}</td>
-                                    <td className="p-4 text-gray-600">{grade.descricao || '-'}</td>
-                                    <td className="p-4 text-gray-600">{grade.ordem || '-'}</td>
+                                    <td className="p-4 text-gray-600">{grade.nivel || '-'}</td>
                                     <td className="p-4 text-right">
                                         <div className="flex gap-2 justify-end">
                                             <button onClick={() => handleEdit(grade)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Pencil size={18} /></button>
@@ -150,12 +155,14 @@ const AdminGrades: React.FC = () => {
                                     <input type="text" required value={formData.nome || ''} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Descrição</label>
-                                    <input type="text" value={formData.descricao || ''} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Ordem</label>
-                                    <input type="number" value={formData.ordem || ''} onChange={(e) => setFormData({ ...formData, ordem: parseInt(e.target.value) })} className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none" />
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Nível</label>
+                                    <select value={formData.nivel || ''} onChange={(e) => setFormData({ ...formData, nivel: e.target.value })} className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none">
+                                        <option value="">Selecione...</option>
+                                        <option value="Fundamental I">Fundamental I</option>
+                                        <option value="Fundamental II">Fundamental II</option>
+                                        <option value="Ensino Médio">Ensino Médio</option>
+                                        <option value="Infantil">Infantil</option>
+                                    </select>
                                 </div>
                                 <div className="pt-4 flex justify-end gap-3 border-t">
                                     <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl font-medium">Cancelar</button>
