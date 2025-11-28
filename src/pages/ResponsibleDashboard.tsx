@@ -66,6 +66,7 @@ const ResponsibleDashboard: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [videoMessages, setVideoMessages] = useState<Message[]>([]);
     const [cameras, setCameras] = useState<CameraType[]>([]);
+    const [camerasLoading, setCamerasLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'home' | 'cameras' | 'activity' | 'messages'>('home');
     const [loading, setLoading] = useState(true);
     const [storyModal, setStoryModal] = useState<{ open: boolean; index: number }>({ open: false, index: 0 });
@@ -73,9 +74,13 @@ const ResponsibleDashboard: React.FC = () => {
     const [showUserProfile, setShowUserProfile] = useState(false);
     const [editingName, setEditingName] = useState('');
     const cameraRefs = useRef<{ [key: string]: { video: HTMLVideoElement | null; hls: Hls | null } }>({});
+    const cameraInterval = useRef<any>(null);
 
     useEffect(() => {
         fetchUserAndStudents();
+        return () => {
+            if (cameraInterval.current) clearInterval(cameraInterval.current);
+        };
     }, []);
 
     useEffect(() => {
@@ -83,6 +88,18 @@ const ResponsibleDashboard: React.FC = () => {
             fetchStudentData();
         }
     }, [selectedStudent]);
+
+    useEffect(() => {
+        if (activeTab === 'cameras' && selectedStudent) {
+            fetchCameras();
+            cameraInterval.current = setInterval(fetchCameras, 30000);
+        } else {
+            if (cameraInterval.current) clearInterval(cameraInterval.current);
+        }
+        return () => {
+            if (cameraInterval.current) clearInterval(cameraInterval.current);
+        };
+    }, [activeTab, selectedStudent]);
 
     const getMediaUrl = (mediaUrl?: string, bucket?: string) => {
         if (!mediaUrl) return '';
@@ -120,21 +137,39 @@ const ResponsibleDashboard: React.FC = () => {
             setStudents(matchedStudents);
             if (matchedStudents.length > 0) {
                 setSelectedStudent(matchedStudents[0]);
+                fetchAllLogs(matchedStudents);
             }
         }
         setLoading(false);
     };
 
-    const fetchStudentData = async () => {
-        if (!selectedStudent) return;
-
+    const fetchAllLogs = async (studentsList: Student[]) => {
+        const studentNames = studentsList.map(s => s.nome);
         const { data: logsData } = await supabase
             .from('logs')
             .select('*')
-            .eq('nome_aluno', selectedStudent.nome)
+            .in('nome_aluno', studentNames)
             .order('data_do_log', { ascending: false })
-            .limit(20);
+            .limit(50);
         setLogs(logsData || []);
+    };
+
+    const fetchCameras = async () => {
+        if (!selectedStudent?.escola_id) return;
+
+        if (cameras.length === 0) setCamerasLoading(true);
+
+        const { data: camerasData } = await supabase
+            .from('cameras')
+            .select('*')
+            .eq('escola_id', selectedStudent.escola_id);
+
+        setCameras(camerasData || []);
+        setCamerasLoading(false);
+    };
+
+    const fetchStudentData = async () => {
+        if (!selectedStudent) return;
 
         if (selectedStudent.escola_id) {
             const { data: messagesData } = await supabase
@@ -147,12 +182,6 @@ const ResponsibleDashboard: React.FC = () => {
 
             const videos = messagesData?.filter(m => m.tipo?.includes('video')) || [];
             setVideoMessages(videos);
-
-            const { data: camerasData } = await supabase
-                .from('cameras')
-                .select('*')
-                .eq('escola_id', selectedStudent.escola_id);
-            setCameras(camerasData || []);
         }
     };
 
@@ -347,7 +376,7 @@ const ResponsibleDashboard: React.FC = () => {
                                     }`}
                             >
                                 <ClockCounterClockwise size={20} weight={activeTab === 'activity' ? 'fill' : 'regular'} />
-                                <span className="font-medium">Atividades</span>
+                                <span className="font-medium">Logs</span>
                             </button>
                             <button
                                 onClick={() => handleTabChange('messages')}
@@ -517,7 +546,11 @@ const ResponsibleDashboard: React.FC = () => {
                 {activeTab === 'cameras' && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                         <h2 className="text-xl font-bold text-gray-900 px-2">Câmeras da Escola</h2>
-                        {cameras.length > 0 ? (
+                        {camerasLoading ? (
+                            <div className="flex justify-center py-12">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[hsl(var(--brand-blue))]"></div>
+                            </div>
+                        ) : cameras.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {cameras.map((camera) => (
                                     <div key={camera.id} className="bg-white rounded-2xl shadow-lg overflow-hidden">
@@ -549,7 +582,7 @@ const ResponsibleDashboard: React.FC = () => {
 
                 {activeTab === 'activity' && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                        <h2 className="text-xl font-bold text-gray-900 px-2">Histórico de Atividades</h2>
+                        <h2 className="text-xl font-bold text-gray-900 px-2">Histórico de Logs</h2>
                         {logs.length > 0 ? (
                             <div className="space-y-3">
                                 {logs.map((log) => (
@@ -575,7 +608,7 @@ const ResponsibleDashboard: React.FC = () => {
                         ) : (
                             <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
                                 <ClockCounterClockwise size={48} className="mx-auto text-gray-400 mb-2" />
-                                <p className="text-gray-500">Nenhuma atividade registrada</p>
+                                <p className="text-gray-500">Nenhum log registrado</p>
                             </div>
                         )}
                     </motion.div>
@@ -766,10 +799,10 @@ const ResponsibleDashboard: React.FC = () => {
                                             <img
                                                 src={currentUser.foto_perfil}
                                                 alt="Perfil"
-                                                className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                                                className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
                                             />
                                         ) : (
-                                            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] flex items-center justify-center text-white text-4xl font-bold border-4 border-white shadow-lg">
+                                            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] flex items-center justify-center text-white text-5xl font-bold border-4 border-white shadow-lg">
                                                 {currentUser.nome?.charAt(0)}
                                             </div>
                                         )}
@@ -817,7 +850,7 @@ const ResponsibleDashboard: React.FC = () => {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Email / Login</label>
                                         <input
                                             type="text"
-                                            value={currentUser.login || ''}
+                                            value={currentUser.email || currentUser.login || ''}
                                             disabled
                                             className="w-full px-4 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-500"
                                         />
@@ -938,7 +971,7 @@ const ResponsibleDashboard: React.FC = () => {
                             }`}
                     >
                         <ClockCounterClockwise size={24} weight={activeTab === 'activity' ? 'fill' : 'regular'} />
-                        <span className="text-xs font-medium">Atividades</span>
+                        <span className="text-xs font-medium">Logs</span>
                     </button>
                     <button
                         onClick={() => handleTabChange('messages')}
