@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Camera, ClockCounterClockwise, ChatCircle, House, SignOut, X, CaretLeft, CaretRight, Play } from 'phosphor-react';
+import { Camera, ClockCounterClockwise, ChatCircle, House, SignOut, X, CaretLeft, CaretRight, Play, User as UserIcon } from 'phosphor-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Hls from 'hls.js';
+
+const SUPABASE_URL = 'https://sntyndufbxfzasnqvayc.supabase.co';
 
 type Student = {
     id: string;
@@ -11,6 +13,17 @@ type Student = {
     escola_id?: string;
     turma_id?: string;
     serie_id?: string;
+    matricula?: string;
+    data_nascimento?: string;
+    sexo?: string;
+    whatsapp?: string;
+    cidade?: string;
+    estado?: string;
+    bairro?: string;
+    nome_responsavel_1?: string;
+    telefone_responsavel_1?: string;
+    responsavel_2?: string;
+    telefone_responsavel_2?: string;
     escola?: { nome: string };
     turma?: { nome: string };
     serie?: { nome: string };
@@ -30,6 +43,7 @@ type Message = {
     titulo: string;
     descricao: string;
     media_url?: string;
+    media_bucket?: string;
     published_at: string;
     created_at: string;
     tipo?: string;
@@ -55,6 +69,7 @@ const ResponsibleDashboard: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'home' | 'cameras' | 'activity' | 'messages'>('home');
     const [loading, setLoading] = useState(true);
     const [storyModal, setStoryModal] = useState<{ open: boolean; index: number }>({ open: false, index: 0 });
+    const [showStudentProfile, setShowStudentProfile] = useState(false);
     const cameraRefs = useRef<{ [key: string]: { video: HTMLVideoElement | null; hls: Hls | null } }>({});
 
     useEffect(() => {
@@ -66,6 +81,12 @@ const ResponsibleDashboard: React.FC = () => {
             fetchStudentData();
         }
     }, [selectedStudent]);
+
+    const getMediaUrl = (mediaUrl?: string, bucket?: string) => {
+        if (!mediaUrl) return '';
+        if (mediaUrl.startsWith('http')) return mediaUrl;
+        return `${SUPABASE_URL}/storage/v1/object/public/${bucket || 'mensagens-media'}/${mediaUrl}`;
+    };
 
     const fetchUserAndStudents = async () => {
         setLoading(true);
@@ -121,7 +142,6 @@ const ResponsibleDashboard: React.FC = () => {
                 .limit(20);
             setMessages(messagesData || []);
 
-            // Filter video messages for stories
             const videos = messagesData?.filter(m => m.tipo?.includes('video')) || [];
             setVideoMessages(videos);
 
@@ -172,6 +192,7 @@ const ResponsibleDashboard: React.FC = () => {
     };
 
     const formatDate = (dateString: string) => {
+        if (!dateString) return '';
         const date = new Date(dateString);
         return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     };
@@ -210,6 +231,18 @@ const ResponsibleDashboard: React.FC = () => {
         }
     };
 
+    const calculateAge = (birthDate?: string) => {
+        if (!birthDate) return '';
+        const today = new Date();
+        const birth = new Date(birthDate);
+        let age = today.getFullYear() - birth.getFullYear();
+        const monthDiff = today.getMonth() - birth.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+            age--;
+        }
+        return `${age} anos`;
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
@@ -221,52 +254,71 @@ const ResponsibleDashboard: React.FC = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 pb-20 md:pb-0">
             {/* Header */}
-            <div className="bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white p-6 rounded-b-3xl shadow-lg">
+            <div className="bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white p-6 shadow-lg">
                 <div className="max-w-7xl mx-auto">
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center">
                         <div>
                             <h1 className="text-2xl font-bold">Olá, {currentUser?.nome?.split(' ')[0]}!</h1>
                             <p className="text-blue-100 text-sm">Acompanhe seus filhos</p>
                         </div>
-                        <button onClick={handleLogout} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+
+                        {/* Desktop Navigation */}
+                        <div className="hidden md:flex items-center gap-4">
+                            <button
+                                onClick={() => setActiveTab('home')}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${activeTab === 'home' ? 'bg-white text-[hsl(var(--brand-blue))]' : 'bg-white/20 hover:bg-white/30'
+                                    }`}
+                            >
+                                <House size={20} weight={activeTab === 'home' ? 'fill' : 'regular'} />
+                                <span className="font-medium">Início</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('cameras')}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${activeTab === 'cameras' ? 'bg-white text-[hsl(var(--brand-blue))]' : 'bg-white/20 hover:bg-white/30'
+                                    }`}
+                            >
+                                <Camera size={20} weight={activeTab === 'cameras' ? 'fill' : 'regular'} />
+                                <span className="font-medium">Câmeras</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('activity')}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${activeTab === 'activity' ? 'bg-white text-[hsl(var(--brand-blue))]' : 'bg-white/20 hover:bg-white/30'
+                                    }`}
+                            >
+                                <ClockCounterClockwise size={20} weight={activeTab === 'activity' ? 'fill' : 'regular'} />
+                                <span className="font-medium">Atividades</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('messages')}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${activeTab === 'messages' ? 'bg-white text-[hsl(var(--brand-blue))]' : 'bg-white/20 hover:bg-white/30'
+                                    }`}
+                            >
+                                <ChatCircle size={20} weight={activeTab === 'messages' ? 'fill' : 'regular'} />
+                                <span className="font-medium">Mensagens</span>
+                            </button>
+                            <button onClick={handleLogout} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                                <SignOut size={24} weight="bold" />
+                            </button>
+                        </div>
+
+                        {/* Mobile Logout */}
+                        <button onClick={handleLogout} className="md:hidden p-2 hover:bg-white/20 rounded-full transition-colors">
                             <SignOut size={24} weight="bold" />
                         </button>
                     </div>
 
                     {students.length > 1 && (
-                        <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2">
+                        <div className="flex gap-2 overflow-x-auto pb-2 pt-4 -mx-2 px-2">
                             {students.map((student) => (
                                 <button
                                     key={student.id}
                                     onClick={() => setSelectedStudent(student)}
                                     className={`flex-shrink-0 px-4 py-2 rounded-full font-medium transition-all ${selectedStudent?.id === student.id
-                                        ? 'bg-white text-[hsl(var(--brand-blue))]'
-                                        : 'bg-white/20 text-white hover:bg-white/30'
+                                            ? 'bg-white text-[hsl(var(--brand-blue))]'
+                                            : 'bg-white/20 text-white hover:bg-white/30'
                                         }`}
                                 >
                                     {student.nome.split(' ')[0]}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Instagram-style Stories */}
-                    {activeTab === 'home' && videoMessages.length > 0 && (
-                        <div className="flex gap-3 overflow-x-auto pb-2 pt-4 -mx-2 px-2">
-                            {videoMessages.map((msg, idx) => (
-                                <button
-                                    key={msg.id}
-                                    onClick={() => openStory(idx)}
-                                    className="flex-shrink-0 flex flex-col items-center gap-2"
-                                >
-                                    <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-500 p-0.5">
-                                        <div className="w-full h-full rounded-full bg-white p-0.5">
-                                            <div className="w-full h-full rounded-full bg-gradient-to-br from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] flex items-center justify-center text-white font-bold">
-                                                <Play size={24} weight="fill" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <span className="text-xs text-white truncate max-w-[64px]">{msg.escola?.nome || 'Escola'}</span>
                                 </button>
                             ))}
                         </div>
@@ -278,8 +330,33 @@ const ResponsibleDashboard: React.FC = () => {
             <div className="max-w-7xl mx-auto p-4">
                 {activeTab === 'home' && selectedStudent && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                        {/* Instagram-style Stories */}
+                        {videoMessages.length > 0 && (
+                            <div className="bg-white rounded-2xl shadow-lg p-4">
+                                <div className="flex gap-3 overflow-x-auto pb-2">
+                                    {videoMessages.map((msg, idx) => (
+                                        <button
+                                            key={msg.id}
+                                            onClick={() => openStory(idx)}
+                                            className="flex-shrink-0 flex flex-col items-center gap-2"
+                                        >
+                                            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-500 p-0.5">
+                                                <div className="w-full h-full rounded-full bg-white p-0.5">
+                                                    <div className="w-full h-full rounded-full bg-gradient-to-br from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] flex items-center justify-center text-white font-bold">
+                                                        <Play size={24} weight="fill" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <span className="text-xs text-gray-700 truncate max-w-[64px]">{msg.escola?.nome || 'Escola'}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Student Card */}
                         <div className="bg-white rounded-2xl shadow-lg p-6">
-                            <div className="flex items-center gap-4 mb-4">
+                            <div className="flex items-center gap-4">
                                 {selectedStudent.foto_url ? (
                                     <img src={selectedStudent.foto_url} alt={selectedStudent.nome} className="w-20 h-20 rounded-full object-cover" />
                                 ) : (
@@ -292,6 +369,13 @@ const ResponsibleDashboard: React.FC = () => {
                                     <p className="text-gray-600">{selectedStudent.escola?.nome || 'Escola não informada'}</p>
                                     <p className="text-sm text-gray-500">{selectedStudent.turma?.nome || ''} - {selectedStudent.serie?.nome || ''}</p>
                                 </div>
+                                <button
+                                    onClick={() => setShowStudentProfile(true)}
+                                    className="px-4 py-2 bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white rounded-xl hover:shadow-lg transition-shadow font-medium"
+                                >
+                                    <UserIcon size={20} weight="bold" className="inline mr-2" />
+                                    Ver Ficha
+                                </button>
                             </div>
                         </div>
 
@@ -409,9 +493,18 @@ const ResponsibleDashboard: React.FC = () => {
                                     <div key={message.id} className="bg-white rounded-2xl shadow-lg p-4">
                                         {message.media_url && (
                                             message.tipo?.includes('video') ? (
-                                                <video src={message.media_url} controls className="w-full h-48 object-cover rounded-xl mb-3" />
+                                                <video
+                                                    src={getMediaUrl(message.media_url, message.media_bucket)}
+                                                    controls
+                                                    className="w-full h-48 object-cover rounded-xl mb-3"
+                                                    playsInline
+                                                />
                                             ) : (
-                                                <img src={message.media_url} alt="" className="w-full h-48 object-cover rounded-xl mb-3" />
+                                                <img
+                                                    src={getMediaUrl(message.media_url, message.media_bucket)}
+                                                    alt=""
+                                                    className="w-full h-48 object-cover rounded-xl mb-3"
+                                                />
                                             )
                                         )}
                                         <h3 className="font-bold text-gray-900 mb-2">{message.titulo}</h3>
@@ -429,6 +522,122 @@ const ResponsibleDashboard: React.FC = () => {
                     </motion.div>
                 )}
             </div>
+
+            {/* Student Profile Modal */}
+            <AnimatePresence>
+                {showStudentProfile && selectedStudent && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                        onClick={() => setShowStudentProfile(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0.95 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+                        >
+                            <div className="p-6 border-b bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white flex justify-between items-center">
+                                <h3 className="text-xl font-bold">Ficha do Aluno</h3>
+                                <button onClick={() => setShowStudentProfile(false)}>
+                                    <X size={28} weight="bold" />
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-6">
+                                <div className="flex items-center gap-4">
+                                    {selectedStudent.foto_url ? (
+                                        <img src={selectedStudent.foto_url} alt={selectedStudent.nome} className="w-24 h-24 rounded-full object-cover" />
+                                    ) : (
+                                        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] flex items-center justify-center text-white text-3xl font-bold">
+                                            {selectedStudent.nome.charAt(0)}
+                                        </div>
+                                    )}
+                                    <div>
+                                        <h4 className="text-2xl font-bold text-gray-900">{selectedStudent.nome}</h4>
+                                        <p className="text-gray-600">{selectedStudent.matricula || 'Matrícula não informada'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-sm text-gray-500 mb-1">Data de Nascimento</p>
+                                        <p className="font-medium text-gray-900">{formatDate(selectedStudent.data_nascimento || '')}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-500 mb-1">Idade</p>
+                                        <p className="font-medium text-gray-900">{calculateAge(selectedStudent.data_nascimento)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-500 mb-1">Sexo</p>
+                                        <p className="font-medium text-gray-900">{selectedStudent.sexo || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-500 mb-1">WhatsApp</p>
+                                        <p className="font-medium text-gray-900">{selectedStudent.whatsapp || '-'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="border-t pt-4">
+                                    <h5 className="font-bold text-gray-900 mb-3">Informações Escolares</h5>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-sm text-gray-500 mb-1">Escola</p>
+                                            <p className="font-medium text-gray-900">{selectedStudent.escola?.nome || '-'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-500 mb-1">Turma</p>
+                                            <p className="font-medium text-gray-900">{selectedStudent.turma?.nome || '-'}</p>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <p className="text-sm text-gray-500 mb-1">Série</p>
+                                            <p className="font-medium text-gray-900">{selectedStudent.serie?.nome || '-'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="border-t pt-4">
+                                    <h5 className="font-bold text-gray-900 mb-3">Endereço</h5>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-sm text-gray-500 mb-1">Cidade</p>
+                                            <p className="font-medium text-gray-900">{selectedStudent.cidade || '-'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-500 mb-1">Estado</p>
+                                            <p className="font-medium text-gray-900">{selectedStudent.estado || '-'}</p>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <p className="text-sm text-gray-500 mb-1">Bairro</p>
+                                            <p className="font-medium text-gray-900">{selectedStudent.bairro || '-'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="border-t pt-4">
+                                    <h5 className="font-bold text-gray-900 mb-3">Responsáveis</h5>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <p className="text-sm text-gray-500 mb-1">Responsável 1</p>
+                                            <p className="font-medium text-gray-900">{selectedStudent.nome_responsavel_1 || '-'}</p>
+                                            <p className="text-sm text-gray-600">{selectedStudent.telefone_responsavel_1 || '-'}</p>
+                                        </div>
+                                        {selectedStudent.responsavel_2 && (
+                                            <div>
+                                                <p className="text-sm text-gray-500 mb-1">Responsável 2</p>
+                                                <p className="font-medium text-gray-900">{selectedStudent.responsavel_2}</p>
+                                                <p className="text-sm text-gray-600">{selectedStudent.telefone_responsavel_2 || '-'}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Story Modal */}
             <AnimatePresence>
@@ -479,10 +688,11 @@ const ResponsibleDashboard: React.FC = () => {
                                 {videoMessages[storyModal.index].media_url && (
                                     <video
                                         key={videoMessages[storyModal.index].id}
-                                        src={videoMessages[storyModal.index].media_url}
+                                        src={getMediaUrl(videoMessages[storyModal.index].media_url, videoMessages[storyModal.index].media_bucket)}
                                         controls
                                         autoPlay
                                         className="max-h-full max-w-full"
+                                        playsInline
                                     />
                                 )}
                             </div>
@@ -496,7 +706,7 @@ const ResponsibleDashboard: React.FC = () => {
                 )}
             </AnimatePresence>
 
-            {/* Bottom Navigation */}
+            {/* Bottom Navigation (Mobile Only) */}
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg md:hidden">
                 <div className="flex justify-around items-center p-2">
                     <button
@@ -530,44 +740,6 @@ const ResponsibleDashboard: React.FC = () => {
                     >
                         <ChatCircle size={24} weight={activeTab === 'messages' ? 'fill' : 'regular'} />
                         <span className="text-xs font-medium">Mensagens</span>
-                    </button>
-                </div>
-            </div>
-
-            {/* Desktop Navigation */}
-            <div className="hidden md:block fixed top-20 left-4 bg-white rounded-2xl shadow-lg p-4">
-                <div className="flex flex-col gap-2">
-                    <button
-                        onClick={() => setActiveTab('home')}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'home' ? 'text-[hsl(var(--brand-blue))] bg-blue-50' : 'text-gray-600 hover:bg-gray-50'
-                            }`}
-                    >
-                        <House size={24} weight={activeTab === 'home' ? 'fill' : 'regular'} />
-                        <span className="font-medium">Início</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('cameras')}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'cameras' ? 'text-[hsl(var(--brand-blue))] bg-blue-50' : 'text-gray-600 hover:bg-gray-50'
-                            }`}
-                    >
-                        <Camera size={24} weight={activeTab === 'cameras' ? 'fill' : 'regular'} />
-                        <span className="font-medium">Câmeras</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('activity')}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'activity' ? 'text-[hsl(var(--brand-blue))] bg-blue-50' : 'text-gray-600 hover:bg-gray-50'
-                            }`}
-                    >
-                        <ClockCounterClockwise size={24} weight={activeTab === 'activity' ? 'fill' : 'regular'} />
-                        <span className="font-medium">Atividades</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('messages')}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'messages' ? 'text-[hsl(var(--brand-blue))] bg-blue-50' : 'text-gray-600 hover:bg-gray-50'
-                            }`}
-                    >
-                        <ChatCircle size={24} weight={activeTab === 'messages' ? 'fill' : 'regular'} />
-                        <span className="font-medium">Mensagens</span>
                     </button>
                 </div>
             </div>
