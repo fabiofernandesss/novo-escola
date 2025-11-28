@@ -8,13 +8,9 @@ type Class = {
     nome: string;
     escola_id?: string;
     serie_id?: string;
-    ano?: number;
     turno?: string;
-    capacidade?: number;
-    sala?: string;
-    periodo_letivo?: string;
+    professor_responsavel_id?: string;
     criado_em: string;
-    atualizado_em: string;
     escolas?: { nome: string };
     series?: { nome: string };
 };
@@ -108,9 +104,7 @@ const AdminClasses: React.FC = () => {
         setEditingClass(null);
         setFormData({
             nome: '',
-            ano: new Date().getFullYear(),
             turno: 'Manhã',
-            capacidade: 30,
             escola_id: schools[0]?.id || '',
             serie_id: grades[0]?.id || ''
         });
@@ -201,14 +195,13 @@ const AdminClasses: React.FC = () => {
                                 <th className="p-4 font-semibold text-gray-700">Escola</th>
                                 <th className="p-4 font-semibold text-gray-700">Série</th>
                                 <th className="p-4 font-semibold text-gray-700">Turno</th>
-                                <th className="p-4 font-semibold text-gray-700">Ano</th>
                                 <th className="p-4 font-semibold text-gray-700 text-right">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={6} className="p-8 text-center text-gray-500">
+                                    <td colSpan={5} className="p-8 text-center text-gray-500">
                                         <div className="flex items-center justify-center gap-2">
                                             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[hsl(var(--brand-blue))]"></div>
                                             Carregando...
@@ -234,7 +227,6 @@ const AdminClasses: React.FC = () => {
                                         <td className="p-4 text-gray-600">{cls.escolas?.nome || '-'}</td>
                                         <td className="p-4 text-gray-600">{cls.series?.nome || '-'}</td>
                                         <td className="p-4 text-gray-600">{cls.turno || '-'}</td>
-                                        <td className="p-4 text-gray-600">{cls.ano || '-'}</td>
                                         <td className="p-4 text-right">
                                             <div className="flex gap-2 justify-end">
                                                 <button
@@ -282,8 +274,8 @@ const AdminClasses: React.FC = () => {
                                             key={i}
                                             onClick={() => setCurrentPage(i + 1)}
                                             className={`px-3 py-1 border rounded-lg transition-colors ${currentPage === i + 1
-                                                    ? 'bg-[hsl(var(--brand-blue))] text-white'
-                                                    : 'border-gray-200 hover:bg-white'
+                                                ? 'bg-[hsl(var(--brand-blue))] text-white'
+                                                : 'border-gray-200 hover:bg-white'
                                                 }`}
                                         >
                                             {i + 1}
@@ -366,35 +358,14 @@ const AdminClasses: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Ano</label>
-                                        <input type="number" value={formData.ano || ''} onChange={(e) => setFormData({ ...formData, ano: parseInt(e.target.value) })} className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Turno</label>
-                                        <select value={formData.turno || 'Manhã'} onChange={(e) => setFormData({ ...formData, turno: e.target.value })} className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none">
-                                            <option value="Manhã">Manhã</option>
-                                            <option value="Tarde">Tarde</option>
-                                            <option value="Noite">Noite</option>
-                                            <option value="Integral">Integral</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Capacidade</label>
-                                        <input type="number" value={formData.capacidade || ''} onChange={(e) => setFormData({ ...formData, capacidade: parseInt(e.target.value) })} className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none" />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Sala</label>
-                                        <input type="text" value={formData.sala || ''} onChange={(e) => setFormData({ ...formData, sala: e.target.value })} className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Período Letivo</label>
-                                        <input type="text" value={formData.periodo_letivo || ''} onChange={(e) => setFormData({ ...formData, periodo_letivo: e.target.value })} className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none" />
-                                    </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Turno</label>
+                                    <select value={formData.turno || 'Manhã'} onChange={(e) => setFormData({ ...formData, turno: e.target.value })} className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none">
+                                        <option value="Manhã">Manhã</option>
+                                        <option value="Tarde">Tarde</option>
+                                        <option value="Noite">Noite</option>
+                                        <option value="Integral">Integral</option>
+                                    </select>
                                 </div>
 
                                 <div className="pt-4 flex justify-end gap-3 border-t">
