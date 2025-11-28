@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Camera, ClockCounterClockwise, ChatCircle, House, SignOut, X } from 'phosphor-react';
-import { motion } from 'framer-motion';
+import { Camera, ClockCounterClockwise, ChatCircle, House, SignOut, X, CaretLeft, CaretRight, Play } from 'phosphor-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Hls from 'hls.js';
 
 type Student = {
@@ -32,6 +32,9 @@ type Message = {
     media_url?: string;
     published_at: string;
     created_at: string;
+    tipo?: string;
+    escola?: { nome: string };
+    created_by?: string;
 };
 
 type CameraType = {
@@ -47,12 +50,13 @@ const ResponsibleDashboard: React.FC = () => {
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [logs, setLogs] = useState<Log[]>([]);
     const [messages, setMessages] = useState<Message[]>([]);
+    const [videoMessages, setVideoMessages] = useState<Message[]>([]);
     const [cameras, setCameras] = useState<CameraType[]>([]);
     const [activeTab, setActiveTab] = useState<'home' | 'cameras' | 'activity' | 'messages'>('home');
     const [loading, setLoading] = useState(true);
-    const [selectedCamera, setSelectedCamera] = useState<CameraType | null>(null);
+    const [storyModal, setStoryModal] = useState<{ open: boolean; index: number }>({ open: false, index: 0 });
     const videoRef = useRef<HTMLVideoElement>(null);
-    const hlsRef = useRef<Hls | null>(null);
+    const cameraRefs = useRef<{ [key: string]: { video: HTMLVideoElement | null; hls: Hls | null } }>({});
 
     useEffect(() => {
         fetchUserAndStudents();
@@ -63,17 +67,6 @@ const ResponsibleDashboard: React.FC = () => {
             fetchStudentData();
         }
     }, [selectedStudent]);
-
-    useEffect(() => {
-        if (selectedCamera && videoRef.current) {
-            playCamera();
-        }
-        return () => {
-            if (hlsRef.current) {
-                hlsRef.current.destroy();
-            }
-        };
-    }, [selectedCamera]);
 
     const fetchUserAndStudents = async () => {
         setLoading(true);
@@ -89,15 +82,12 @@ const ResponsibleDashboard: React.FC = () => {
         setCurrentUser(userData);
 
         if (userData?.whatsapp) {
-            // Remove all non-numeric characters from WhatsApp for comparison
             const cleanPhone = userData.whatsapp.replace(/\D/g, '');
 
-            // Fetch students where phone matches (comparing only digits)
             const { data: studentsData } = await supabase
                 .from('alunos')
                 .select('*, escola:escolas(nome), turma:turmas(nome), serie:series(nome)');
 
-            // Filter students client-side to match phone numbers (ignoring formatting)
             const matchedStudents = studentsData?.filter(student => {
                 const phone1 = student.telefone_responsavel_1?.replace(/\D/g, '') || '';
                 const phone2 = student.telefone_responsavel_2?.replace(/\D/g, '') || '';
@@ -115,7 +105,6 @@ const ResponsibleDashboard: React.FC = () => {
     const fetchStudentData = async () => {
         if (!selectedStudent) return;
 
-        // Fetch logs for this student
         const { data: logsData } = await supabase
             .from('logs')
             .select('*')
@@ -124,17 +113,19 @@ const ResponsibleDashboard: React.FC = () => {
             .limit(20);
         setLogs(logsData || []);
 
-        // Fetch messages from student's school
         if (selectedStudent.escola_id) {
             const { data: messagesData } = await supabase
                 .from('mensagens')
-                .select('*')
+                .select('*, escola:escolas(nome)')
                 .eq('escola_id', selectedStudent.escola_id)
                 .order('published_at', { ascending: false })
-                .limit(10);
+                .limit(20);
             setMessages(messagesData || []);
 
-            // Fetch cameras from student's school
+            // Filter video messages for stories
+            const videos = messagesData?.filter(m => m.tipo?.includes('video')) || [];
+            setVideoMessages(videos);
+
             const { data: camerasData } = await supabase
                 .from('cameras')
                 .select('*')
@@ -143,13 +134,9 @@ const ResponsibleDashboard: React.FC = () => {
         }
     };
 
-    const playCamera = () => {
-        if (!selectedCamera || !videoRef.current) return;
+    const playCamera = (cameraId: string, url: string, videoElement: HTMLVideoElement) => {
+        let src = url;
 
-        const video = videoRef.current;
-        let src = selectedCamera.url_m3u8;
-
-        // Use proxy if on HTTPS
         if (window.location.protocol === 'https:' && src.includes('http://78.46.228.35')) {
             if (src.includes(':8001')) {
                 src = src.replace('http://78.46.228.35:8001', '/camera-proxy-8001');
@@ -159,9 +146,6 @@ const ResponsibleDashboard: React.FC = () => {
         }
 
         if (Hls.isSupported()) {
-            if (hlsRef.current) {
-                hlsRef.current.destroy();
-            }
             const hls = new Hls({
                 maxBufferLength: 30,
                 maxMaxBufferLength: 600,
@@ -169,16 +153,16 @@ const ResponsibleDashboard: React.FC = () => {
                 lowLatencyMode: true,
                 backBufferLength: 90
             });
-            hlsRef.current = hls;
+            cameraRefs.current[cameraId] = { video: videoElement, hls };
             hls.loadSource(src);
-            hls.attachMedia(video);
+            hls.attachMedia(videoElement);
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.play().catch(e => console.error("Error playing video:", e));
+                videoElement.play().catch(e => console.error("Error playing:", e));
             });
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = src;
-            video.addEventListener('loadedmetadata', () => {
-                video.play();
+        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+            videoElement.src = src;
+            videoElement.addEventListener('loadedmetadata', () => {
+                videoElement.play();
             });
         }
     };
@@ -211,6 +195,22 @@ const ResponsibleDashboard: React.FC = () => {
         return logs.filter(log => new Date(log.data_do_log).toDateString() === today);
     };
 
+    const openStory = (index: number) => {
+        setStoryModal({ open: true, index });
+    };
+
+    const nextStory = () => {
+        if (storyModal.index < videoMessages.length - 1) {
+            setStoryModal({ ...storyModal, index: storyModal.index + 1 });
+        }
+    };
+
+    const prevStory = () => {
+        if (storyModal.index > 0) {
+            setStoryModal({ ...storyModal, index: storyModal.index - 1 });
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
@@ -220,43 +220,65 @@ const ResponsibleDashboard: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 pb-20">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 pb-20 md:pb-0">
             {/* Header */}
             <div className="bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white p-6 rounded-b-3xl shadow-lg">
-                <div className="flex justify-between items-center mb-4">
-                    <div>
-                        <h1 className="text-2xl font-bold">Olá, {currentUser?.nome?.split(' ')[0]}!</h1>
-                        <p className="text-blue-100 text-sm">Acompanhe seus filhos</p>
+                <div className="max-w-7xl mx-auto">
+                    <div className="flex justify-between items-center mb-4">
+                        <div>
+                            <h1 className="text-2xl font-bold">Olá, {currentUser?.nome?.split(' ')[0]}!</h1>
+                            <p className="text-blue-100 text-sm">Acompanhe seus filhos</p>
+                        </div>
+                        <button onClick={handleLogout} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                            <SignOut size={24} weight="bold" />
+                        </button>
                     </div>
-                    <button onClick={handleLogout} className="p-2 hover:bg-white/20 rounded-full transition-colors">
-                        <SignOut size={24} weight="bold" />
-                    </button>
-                </div>
 
-                {/* Student Selector */}
-                {students.length > 1 && (
-                    <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2">
-                        {students.map((student) => (
-                            <button
-                                key={student.id}
-                                onClick={() => setSelectedStudent(student)}
-                                className={`flex-shrink-0 px-4 py-2 rounded-full font-medium transition-all ${selectedStudent?.id === student.id
-                                    ? 'bg-white text-[hsl(var(--brand-blue))]'
-                                    : 'bg-white/20 text-white hover:bg-white/30'
-                                    }`}
-                            >
-                                {student.nome.split(' ')[0]}
-                            </button>
-                        ))}
-                    </div>
-                )}
+                    {students.length > 1 && (
+                        <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2">
+                            {students.map((student) => (
+                                <button
+                                    key={student.id}
+                                    onClick={() => setSelectedStudent(student)}
+                                    className={`flex-shrink-0 px-4 py-2 rounded-full font-medium transition-all ${selectedStudent?.id === student.id
+                                            ? 'bg-white text-[hsl(var(--brand-blue))]'
+                                            : 'bg-white/20 text-white hover:bg-white/30'
+                                        }`}
+                                >
+                                    {student.nome.split(' ')[0]}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Instagram-style Stories */}
+                    {activeTab === 'home' && videoMessages.length > 0 && (
+                        <div className="flex gap-3 overflow-x-auto pb-2 pt-4 -mx-2 px-2">
+                            {videoMessages.map((msg, idx) => (
+                                <button
+                                    key={msg.id}
+                                    onClick={() => openStory(idx)}
+                                    className="flex-shrink-0 flex flex-col items-center gap-2"
+                                >
+                                    <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-500 p-0.5">
+                                        <div className="w-full h-full rounded-full bg-white p-0.5">
+                                            <div className="w-full h-full rounded-full bg-gradient-to-br from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] flex items-center justify-center text-white font-bold">
+                                                <Play size={24} weight="fill" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span className="text-xs text-white truncate max-w-[64px]">{msg.escola?.nome || 'Escola'}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Content */}
-            <div className="p-4">
+            <div className="max-w-7xl mx-auto p-4">
                 {activeTab === 'home' && selectedStudent && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                        {/* Student Card */}
                         <div className="bg-white rounded-2xl shadow-lg p-6">
                             <div className="flex items-center gap-4 mb-4">
                                 {selectedStudent.foto_url ? (
@@ -274,7 +296,6 @@ const ResponsibleDashboard: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Today's Activity */}
                         <div className="bg-white rounded-2xl shadow-lg p-6">
                             <h3 className="text-lg font-bold text-gray-900 mb-4">Atividade de Hoje</h3>
                             {getTodayLogs().length > 0 ? (
@@ -300,7 +321,6 @@ const ResponsibleDashboard: React.FC = () => {
                             )}
                         </div>
 
-                        {/* Quick Stats */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-white rounded-2xl shadow-lg p-4 text-center">
                                 <p className="text-3xl font-bold text-[hsl(var(--brand-blue))]">{logs.length}</p>
@@ -316,46 +336,33 @@ const ResponsibleDashboard: React.FC = () => {
 
                 {activeTab === 'cameras' && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                        {selectedCamera ? (
-                            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                                <div className="p-4 bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white flex justify-between items-center">
-                                    <h3 className="font-bold">{selectedCamera.nome}</h3>
-                                    <button onClick={() => setSelectedCamera(null)} className="p-2 hover:bg-white/20 rounded-full">
-                                        <X size={20} weight="bold" />
-                                    </button>
-                                </div>
-                                <video ref={videoRef} className="w-full aspect-video bg-black" controls playsInline />
+                        <h2 className="text-xl font-bold text-gray-900 px-2">Câmeras da Escola</h2>
+                        {cameras.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {cameras.map((camera) => (
+                                    <div key={camera.id} className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                                        <div className="p-3 bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white">
+                                            <h3 className="font-bold text-sm">{camera.nome}</h3>
+                                        </div>
+                                        <video
+                                            ref={(el) => {
+                                                if (el && !cameraRefs.current[camera.id]) {
+                                                    playCamera(camera.id, camera.url_m3u8, el);
+                                                }
+                                            }}
+                                            className="w-full aspect-video bg-black"
+                                            controls
+                                            playsInline
+                                            muted
+                                        />
+                                    </div>
+                                ))}
                             </div>
                         ) : (
-                            <>
-                                <h2 className="text-xl font-bold text-gray-900 px-2">Câmeras da Escola</h2>
-                                {cameras.length > 0 ? (
-                                    <div className="grid gap-4">
-                                        {cameras.map((camera) => (
-                                            <button
-                                                key={camera.id}
-                                                onClick={() => setSelectedCamera(camera)}
-                                                className="bg-white rounded-2xl shadow-lg p-4 text-left hover:shadow-xl transition-shadow"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] flex items-center justify-center text-white">
-                                                        <Camera size={24} weight="bold" />
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="font-bold text-gray-900">{camera.nome}</h3>
-                                                        <p className="text-sm text-gray-600">Toque para visualizar</p>
-                                                    </div>
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-                                        <Camera size={48} className="mx-auto text-gray-400 mb-2" />
-                                        <p className="text-gray-500">Nenhuma câmera disponível</p>
-                                    </div>
-                                )}
-                            </>
+                            <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+                                <Camera size={48} className="mx-auto text-gray-400 mb-2" />
+                                <p className="text-gray-500">Nenhuma câmera disponível</p>
+                            </div>
                         )}
                     </motion.div>
                 )}
@@ -398,11 +405,15 @@ const ResponsibleDashboard: React.FC = () => {
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                         <h2 className="text-xl font-bold text-gray-900 px-2">Mensagens da Escola</h2>
                         {messages.length > 0 ? (
-                            <div className="space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {messages.map((message) => (
                                     <div key={message.id} className="bg-white rounded-2xl shadow-lg p-4">
                                         {message.media_url && (
-                                            <img src={message.media_url} alt="" className="w-full h-48 object-cover rounded-xl mb-3" />
+                                            message.tipo?.includes('video') ? (
+                                                <video src={message.media_url} controls className="w-full h-48 object-cover rounded-xl mb-3" />
+                                            ) : (
+                                                <img src={message.media_url} alt="" className="w-full h-48 object-cover rounded-xl mb-3" />
+                                            )
                                         )}
                                         <h3 className="font-bold text-gray-900 mb-2">{message.titulo}</h3>
                                         <p className="text-gray-600 text-sm mb-2">{message.descricao}</p>
@@ -420,8 +431,74 @@ const ResponsibleDashboard: React.FC = () => {
                 )}
             </div>
 
+            {/* Story Modal */}
+            <AnimatePresence>
+                {storyModal.open && videoMessages[storyModal.index] && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black flex items-center justify-center"
+                    >
+                        <button
+                            onClick={() => setStoryModal({ open: false, index: 0 })}
+                            className="absolute top-4 right-4 z-10 p-2 bg-white/20 hover:bg-white/30 rounded-full text-white"
+                        >
+                            <X size={24} weight="bold" />
+                        </button>
+
+                        {storyModal.index > 0 && (
+                            <button
+                                onClick={prevStory}
+                                className="absolute left-4 z-10 p-3 bg-white/20 hover:bg-white/30 rounded-full text-white"
+                            >
+                                <CaretLeft size={32} weight="bold" />
+                            </button>
+                        )}
+
+                        {storyModal.index < videoMessages.length - 1 && (
+                            <button
+                                onClick={nextStory}
+                                className="absolute right-4 z-10 p-3 bg-white/20 hover:bg-white/30 rounded-full text-white"
+                            >
+                                <CaretRight size={32} weight="bold" />
+                            </button>
+                        )}
+
+                        <div className="max-w-lg w-full h-full flex flex-col">
+                            <div className="p-4 flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] flex items-center justify-center text-white font-bold">
+                                    {videoMessages[storyModal.index].escola?.nome?.charAt(0) || 'E'}
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-white font-bold">{videoMessages[storyModal.index].escola?.nome || 'Escola'}</p>
+                                    <p className="text-white/70 text-sm">{formatDate(videoMessages[storyModal.index].published_at || videoMessages[storyModal.index].created_at)}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 flex items-center justify-center">
+                                {videoMessages[storyModal.index].media_url && (
+                                    <video
+                                        key={videoMessages[storyModal.index].id}
+                                        src={videoMessages[storyModal.index].media_url}
+                                        controls
+                                        autoPlay
+                                        className="max-h-full max-w-full"
+                                    />
+                                )}
+                            </div>
+
+                            <div className="p-4">
+                                <h3 className="text-white font-bold text-lg mb-2">{videoMessages[storyModal.index].titulo}</h3>
+                                <p className="text-white/90 text-sm">{videoMessages[storyModal.index].descricao}</p>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Bottom Navigation */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg md:hidden">
                 <div className="flex justify-around items-center p-2">
                     <button
                         onClick={() => setActiveTab('home')}
@@ -454,6 +531,44 @@ const ResponsibleDashboard: React.FC = () => {
                     >
                         <ChatCircle size={24} weight={activeTab === 'messages' ? 'fill' : 'regular'} />
                         <span className="text-xs font-medium">Mensagens</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:block fixed top-20 left-4 bg-white rounded-2xl shadow-lg p-4">
+                <div className="flex flex-col gap-2">
+                    <button
+                        onClick={() => setActiveTab('home')}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'home' ? 'text-[hsl(var(--brand-blue))] bg-blue-50' : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                    >
+                        <House size={24} weight={activeTab === 'home' ? 'fill' : 'regular'} />
+                        <span className="font-medium">Início</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('cameras')}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'cameras' ? 'text-[hsl(var(--brand-blue))] bg-blue-50' : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                    >
+                        <Camera size={24} weight={activeTab === 'cameras' ? 'fill' : 'regular'} />
+                        <span className="font-medium">Câmeras</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('activity')}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'activity' ? 'text-[hsl(var(--brand-blue))] bg-blue-50' : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                    >
+                        <ClockCounterClockwise size={24} weight={activeTab === 'activity' ? 'fill' : 'regular'} />
+                        <span className="font-medium">Atividades</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('messages')}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'messages' ? 'text-[hsl(var(--brand-blue))] bg-blue-50' : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                    >
+                        <ChatCircle size={24} weight={activeTab === 'messages' ? 'fill' : 'regular'} />
+                        <span className="font-medium">Mensagens</span>
                     </button>
                 </div>
             </div>
