@@ -213,13 +213,17 @@ const ResponsibleDashboard: React.FC = () => {
     const fetchBuscaSeguraRequests = async () => {
         if (!currentUser) return;
 
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('busca_segura')
-            .select('*, aluno:alunos(nome, turma:turmas(nome))')
+            .select('*')
             .eq('solicitante', currentUser.id)
             .order('created_at', { ascending: false });
 
-        setBuscaSeguraRequests(data || []);
+        if (error) {
+            console.error('Error fetching requests:', error);
+        } else {
+            setBuscaSeguraRequests(data || []);
+        }
     };
 
     const handleDeleteBuscaSegura = async (id: string) => {
@@ -405,8 +409,8 @@ const ResponsibleDashboard: React.FC = () => {
                 .getPublicUrl(photoPath);
 
             // Upload Video
-            // Determine extension from blob type
-            const videoExt = videoBlob.type.split('/')[1] || 'webm';
+            // Force .mp4 extension to avoid mime type issues with Supabase
+            const videoExt = 'mp4';
             const videoPath = `busca-segura/videos/${Date.now()}.${videoExt}`;
 
             const { error: videoError } = await supabase.storage
@@ -611,14 +615,7 @@ const ResponsibleDashboard: React.FC = () => {
                                 <ChatCircle size={20} weight={activeTab === 'messages' ? 'fill' : 'regular'} />
                                 <span className="font-medium">Mensagens</span>
                             </button>
-                            <button
-                                onClick={() => handleTabChange('busca-segura')}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${activeTab === 'busca-segura' ? 'bg-white text-[hsl(var(--brand-blue))]' : 'bg-white/20 hover:bg-white/30'
-                                    }`}
-                            >
-                                <ShieldCheck size={20} weight={activeTab === 'busca-segura' ? 'fill' : 'regular'} />
-                                <span className="font-medium">Busca Segura</span>
-                            </button>
+
 
                             <button
                                 onClick={() => setShowUserProfile(true)}
@@ -692,6 +689,31 @@ const ResponsibleDashboard: React.FC = () => {
                 {activeTab === 'home' && (
                     selectedStudent ? (
                         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                            {/* Quick Actions */}
+                            <div className="flex gap-2 overflow-x-auto pb-2">
+                                <button
+                                    onClick={() => handleTabChange('busca-segura')}
+                                    className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-100 whitespace-nowrap active:scale-95 transition-transform"
+                                >
+                                    <ShieldCheck size={18} className="text-[hsl(var(--brand-blue))]" weight="fill" />
+                                    <span className="text-sm font-medium text-gray-700">Busca Segura</span>
+                                </button>
+                                <button
+                                    onClick={() => handleTabChange('cameras')}
+                                    className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-100 whitespace-nowrap active:scale-95 transition-transform"
+                                >
+                                    <Camera size={18} className="text-[hsl(var(--brand-blue))]" weight="fill" />
+                                    <span className="text-sm font-medium text-gray-700">Câmeras</span>
+                                </button>
+                                <button
+                                    onClick={() => handleTabChange('activity')}
+                                    className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-100 whitespace-nowrap active:scale-95 transition-transform"
+                                >
+                                    <ClockCounterClockwise size={18} className="text-[hsl(var(--brand-blue))]" weight="fill" />
+                                    <span className="text-sm font-medium text-gray-700">Atividades</span>
+                                </button>
+                            </div>
+
                             {/* Instagram-style Stories */}
                             {videoMessages.length > 0 && (
                                 <div className="flex gap-3 overflow-x-auto pb-2">
@@ -948,7 +970,7 @@ const ResponsibleDashboard: React.FC = () => {
                                                     </span>
                                                 </div>
                                                 <p className="text-sm text-gray-500 mt-1">
-                                                    Aluno: <span className="font-medium">{req.aluno?.nome}</span>
+                                                    Aluno: <span className="font-medium">{students.find(s => s.id === req.aluno_id)?.nome || 'Aluno não encontrado'}</span>
                                                 </p>
                                                 <p className="text-xs text-gray-400 mt-2">
                                                     Solicitado em {new Date(req.created_at).toLocaleDateString()}
@@ -1363,14 +1385,7 @@ const ResponsibleDashboard: React.FC = () => {
                         <ChatCircle size={24} weight={activeTab === 'messages' ? 'fill' : 'regular'} />
                         <span className="text-xs font-medium">Mensagens</span>
                     </button>
-                    <button
-                        onClick={() => handleTabChange('busca-segura')}
-                        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${activeTab === 'busca-segura' ? 'text-[hsl(var(--brand-blue))] bg-blue-50' : 'text-gray-600'
-                            }`}
-                    >
-                        <ShieldCheck size={24} weight={activeTab === 'busca-segura' ? 'fill' : 'regular'} />
-                        <span className="text-xs font-medium">Busca</span>
-                    </button>
+
                 </div>
             </div>
 
