@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Camera, ClockCounterClockwise, ChatCircle, House, SignOut, X, CaretLeft, CaretRight, Play, User as UserIcon } from 'phosphor-react';
+import { Camera, ClockCounterClockwise, ChatCircle, House, SignOut, X, CaretLeft, CaretRight, Play, User as UserIcon, PencilSimple } from 'phosphor-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Hls from 'hls.js';
 
@@ -70,6 +70,8 @@ const ResponsibleDashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [storyModal, setStoryModal] = useState<{ open: boolean; index: number }>({ open: false, index: 0 });
     const [showStudentProfile, setShowStudentProfile] = useState(false);
+    const [showUserProfile, setShowUserProfile] = useState(false);
+    const [editingName, setEditingName] = useState('');
     const cameraRefs = useRef<{ [key: string]: { video: HTMLVideoElement | null; hls: Hls | null } }>({});
 
     useEffect(() => {
@@ -100,6 +102,7 @@ const ResponsibleDashboard: React.FC = () => {
             .single();
 
         setCurrentUser(userData);
+        setEditingName(userData?.nome || '');
 
         if (userData?.whatsapp) {
             const cleanPhone = userData.whatsapp.replace(/\D/g, '');
@@ -189,6 +192,22 @@ const ResponsibleDashboard: React.FC = () => {
     const handleLogout = async () => {
         await supabase.auth.signOut();
         window.location.href = '/';
+    };
+
+    const handleUpdateProfile = async () => {
+        if (!currentUser) return;
+
+        const { error } = await supabase
+            .from('usuarios')
+            .update({ nome: editingName })
+            .eq('id', currentUser.id);
+
+        if (!error) {
+            setCurrentUser({ ...currentUser, nome: editingName });
+            alert('Perfil atualizado com sucesso!');
+        } else {
+            alert('Erro ao atualizar perfil.');
+        }
     };
 
     const formatDate = (dateString: string) => {
@@ -296,14 +315,21 @@ const ResponsibleDashboard: React.FC = () => {
                                 <ChatCircle size={20} weight={activeTab === 'messages' ? 'fill' : 'regular'} />
                                 <span className="font-medium">Mensagens</span>
                             </button>
-                            <button onClick={handleLogout} className="p-2 hover:bg-white/20 rounded-full transition-colors">
-                                <SignOut size={24} weight="bold" />
+
+                            <button
+                                onClick={() => setShowUserProfile(true)}
+                                className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors font-bold text-lg"
+                            >
+                                {currentUser?.nome?.charAt(0)}
                             </button>
                         </div>
 
-                        {/* Mobile Logout */}
-                        <button onClick={handleLogout} className="md:hidden p-2 hover:bg-white/20 rounded-full transition-colors">
-                            <SignOut size={24} weight="bold" />
+                        {/* Mobile Profile Trigger */}
+                        <button
+                            onClick={() => setShowUserProfile(true)}
+                            className="md:hidden w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors font-bold text-lg"
+                        >
+                            {currentUser?.nome?.charAt(0)}
                         </button>
                     </div>
 
@@ -341,10 +367,20 @@ const ResponsibleDashboard: React.FC = () => {
                                             className="flex-shrink-0 flex flex-col items-center gap-2"
                                         >
                                             <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-500 p-0.5">
-                                                <div className="w-full h-full rounded-full bg-white p-0.5">
-                                                    <div className="w-full h-full rounded-full bg-gradient-to-br from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] flex items-center justify-center text-white font-bold">
-                                                        <Play size={24} weight="fill" />
-                                                    </div>
+                                                <div className="w-full h-full rounded-full bg-white p-0.5 overflow-hidden relative">
+                                                    {msg.media_url ? (
+                                                        <video
+                                                            src={getMediaUrl(msg.media_url, msg.media_bucket)}
+                                                            className="w-full h-full object-cover rounded-full"
+                                                            muted
+                                                            playsInline
+                                                            preload="metadata"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                                            <Play size={20} weight="fill" className="text-gray-400" />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             <span className="text-xs text-gray-700 truncate max-w-[64px]">{msg.escola?.nome || 'Escola'}</span>
@@ -632,6 +668,93 @@ const ResponsibleDashboard: React.FC = () => {
                                             </div>
                                         )}
                                     </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* User Profile Modal */}
+            <AnimatePresence>
+                {showUserProfile && currentUser && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                        onClick={() => setShowUserProfile(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0.95 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+                        >
+                            <div className="p-6 border-b bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white flex justify-between items-center">
+                                <h3 className="text-xl font-bold">Meu Perfil</h3>
+                                <button onClick={() => setShowUserProfile(false)}>
+                                    <X size={28} weight="bold" />
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-6">
+                                <div className="flex justify-center">
+                                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] flex items-center justify-center text-white text-4xl font-bold">
+                                        {currentUser.nome?.charAt(0)}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={editingName}
+                                                onChange={(e) => setEditingName(e.target.value)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[hsl(var(--brand-blue))] focus:border-transparent"
+                                            />
+                                            <PencilSimple size={20} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
+                                        <input
+                                            type="text"
+                                            value={currentUser.whatsapp || ''}
+                                            disabled
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-500"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Email / Login</label>
+                                        <input
+                                            type="text"
+                                            value={currentUser.login || ''}
+                                            disabled
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="pt-4 space-y-3">
+                                    <button
+                                        onClick={handleUpdateProfile}
+                                        className="w-full py-3 bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-shadow"
+                                    >
+                                        Salvar Alterações
+                                    </button>
+
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <SignOut size={20} weight="bold" />
+                                        Sair da Conta
+                                    </button>
                                 </div>
                             </div>
                         </motion.div>
