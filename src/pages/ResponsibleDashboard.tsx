@@ -55,7 +55,6 @@ const ResponsibleDashboard: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'home' | 'cameras' | 'activity' | 'messages'>('home');
     const [loading, setLoading] = useState(true);
     const [storyModal, setStoryModal] = useState<{ open: boolean; index: number }>({ open: false, index: 0 });
-    const videoRef = useRef<HTMLVideoElement>(null);
     const cameraRefs = useRef<{ [key: string]: { video: HTMLVideoElement | null; hls: Hls | null } }>({});
 
     useEffect(() => {
@@ -241,8 +240,8 @@ const ResponsibleDashboard: React.FC = () => {
                                     key={student.id}
                                     onClick={() => setSelectedStudent(student)}
                                     className={`flex-shrink-0 px-4 py-2 rounded-full font-medium transition-all ${selectedStudent?.id === student.id
-                                            ? 'bg-white text-[hsl(var(--brand-blue))]'
-                                            : 'bg-white/20 text-white hover:bg-white/30'
+                                        ? 'bg-white text-[hsl(var(--brand-blue))]'
+                                        : 'bg-white/20 text-white hover:bg-white/30'
                                         }`}
                                 >
                                     {student.nome.split(' ')[0]}
