@@ -24,7 +24,7 @@ type Student = {
     telefone_responsavel_1?: string;
     responsavel_2?: string;
     telefone_responsavel_2?: string;
-    escola?: { nome: string };
+    escola?: { nome: string; logo_url?: string; suporte?: string };
     turma?: { nome: string };
     serie?: { nome: string };
 };
@@ -72,6 +72,7 @@ const ResponsibleDashboard: React.FC = () => {
     const [storyModal, setStoryModal] = useState<{ open: boolean; index: number }>({ open: false, index: 0 });
     const [showStudentProfile, setShowStudentProfile] = useState(false);
     const [showUserProfile, setShowUserProfile] = useState(false);
+    const [showSchoolInfo, setShowSchoolInfo] = useState(false);
     const [editingName, setEditingName] = useState('');
     const cameraRefs = useRef<{ [key: string]: { video: HTMLVideoElement | null; hls: Hls | null } }>({});
     const cameraInterval = useRef<any>(null);
@@ -127,7 +128,7 @@ const ResponsibleDashboard: React.FC = () => {
 
             const { data: studentsData } = await supabase
                 .from('alunos')
-                .select('*, escola:escolas(nome), turma:turmas(nome), serie:series(nome)');
+                .select('*, escola:escolas(nome, logo_url, suporte), turma:turmas(nome), serie:series(nome)');
 
             const matchedStudents = studentsData?.filter(student => {
                 const phone1 = student.telefone_responsavel_1?.replace(/\D/g, '') || '';
@@ -233,6 +234,11 @@ const ResponsibleDashboard: React.FC = () => {
     };
 
     const handleTabChange = (tab: 'home' | 'cameras' | 'activity' | 'messages') => {
+        // If leaving logs tab and no student selected, select the first one
+        if (activeTab === 'activity' && tab !== 'activity' && !selectedStudent && students.length > 0) {
+            setSelectedStudent(students[0]);
+        }
+
         setActiveTab(tab);
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -381,6 +387,17 @@ const ResponsibleDashboard: React.FC = () => {
                                 <span className="font-medium">Início</span>
                             </button>
                             <button
+                                onClick={() => setShowSchoolInfo(true)}
+                                className="w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors font-bold text-lg overflow-hidden"
+                            >
+                                {selectedStudent?.escola?.logo_url ? (
+                                    <img src={selectedStudent.escola.logo_url} alt="Escola" className="w-full h-full object-cover" />
+                                ) : (
+                                    <House size={24} weight="fill" />
+                                )}
+                            </button>
+
+                            <button
                                 onClick={() => handleTabChange('cameras')}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${activeTab === 'cameras' ? 'bg-white text-[hsl(var(--brand-blue))]' : 'bg-white/20 hover:bg-white/30'
                                     }`}
@@ -435,7 +452,17 @@ const ResponsibleDashboard: React.FC = () => {
                             {students.map((student) => (
                                 <button
                                     key={student.id}
-                                    onClick={() => setSelectedStudent(student)}
+                                    onClick={() => {
+                                        if (activeTab === 'activity') {
+                                            if (selectedStudent?.id === student.id) {
+                                                setSelectedStudent(null);
+                                            } else {
+                                                setSelectedStudent(student);
+                                            }
+                                        } else {
+                                            setSelectedStudent(student);
+                                        }
+                                    }}
                                     className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${selectedStudent?.id === student.id
                                         ? 'bg-white text-[hsl(var(--brand-blue))]'
                                         : 'bg-white/20 text-white hover:bg-white/30'
@@ -451,112 +478,113 @@ const ResponsibleDashboard: React.FC = () => {
 
             {/* Content */}
             <div className="max-w-7xl mx-auto p-4">
-                {activeTab === 'home' && selectedStudent && (
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                        {/* Instagram-style Stories */}
-                        {videoMessages.length > 0 && (
-                            <div className="flex gap-3 overflow-x-auto pb-2">
-                                {videoMessages.map((msg, idx) => (
-                                    <button
-                                        key={msg.id}
-                                        onClick={() => openStory(idx)}
-                                        className="flex-shrink-0"
-                                    >
-                                        <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-500 p-0.5">
-                                            <div className="w-full h-full rounded-full bg-white p-0.5 overflow-hidden relative">
-                                                {msg.media_url ? (
-                                                    <video
-                                                        src={getMediaUrl(msg.media_url, msg.media_bucket)}
-                                                        className="w-full h-full object-cover rounded-full"
-                                                        muted
-                                                        playsInline
-                                                        preload="metadata"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                                                        <Play size={20} weight="fill" className="text-gray-400" />
-                                                    </div>
-                                                )}
+                {activeTab === 'home' && (
+                    selectedStudent ? (
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                            {/* Instagram-style Stories */}
+                            {videoMessages.length > 0 && (
+                                <div className="flex gap-3 overflow-x-auto pb-2">
+                                    {videoMessages.map((msg, idx) => (
+                                        <button
+                                            key={msg.id}
+                                            onClick={() => openStory(idx)}
+                                            className="flex-shrink-0"
+                                        >
+                                            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-500 p-0.5">
+                                                <div className="w-full h-full rounded-full bg-white p-0.5 overflow-hidden relative">
+                                                    {msg.media_url ? (
+                                                        <video
+                                                            src={getMediaUrl(msg.media_url, msg.media_bucket)}
+                                                            className="w-full h-full object-cover rounded-full"
+                                                            muted
+                                                            playsInline
+                                                            preload="metadata"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                                            <Play size={20} weight="fill" className="text-gray-400" />
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Student Card */}
-                        <div
-                            onClick={() => setShowStudentProfile(true)}
-                            className="bg-white rounded-2xl shadow-lg p-6 cursor-pointer active:scale-98 transition-transform relative overflow-hidden"
-                        >
-                            <div className="absolute top-0 right-0 p-4 opacity-10">
-                                <UserIcon size={120} weight="fill" />
-                            </div>
-                            <div className="flex items-center gap-4 relative z-10">
-                                {selectedStudent.foto_url ? (
-                                    <img src={selectedStudent.foto_url} alt={selectedStudent.nome} className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-sm" />
-                                ) : (
-                                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] flex items-center justify-center text-white text-2xl font-bold border-4 border-white shadow-sm">
-                                        {selectedStudent.nome.charAt(0)}
-                                    </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                    <h2 className="text-xl font-bold text-gray-900 truncate">{selectedStudent.nome}</h2>
-                                    <p className="text-gray-600 text-sm truncate">{selectedStudent.escola?.nome || 'Escola não informada'}</p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-md font-medium truncate">
-                                            {selectedStudent.turma?.nome || 'Turma -'}
-                                        </span>
-                                        <span className="px-2 py-0.5 bg-green-50 text-green-700 text-xs rounded-md font-medium truncate">
-                                            {selectedStudent.serie?.nome || 'Série -'}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="bg-gray-50 p-2 rounded-full text-gray-400">
-                                    <CaretRight size={24} weight="bold" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Today's Activity */}
-                        <div className="bg-white rounded-2xl shadow-lg p-6">
-                            <h3 className="text-lg font-bold text-gray-900 mb-4">Atividade de Hoje</h3>
-                            {getTodayLogs().length > 0 ? (
-                                <div className="space-y-3">
-                                    {getTodayLogs().map((log) => (
-                                        <div key={log.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                                            {log.url_foto_aluno && (
-                                                <img src={log.url_foto_aluno} alt="" className="w-12 h-12 rounded-full object-cover" />
-                                            )}
-                                            <div className="flex-1">
-                                                <p className="font-medium text-gray-900">{getEventLabel(log.event)}</p>
-                                                <p className="text-sm text-gray-600">{formatTime(log.data_do_log)}</p>
-                                            </div>
-                                            <div className={`px-3 py-1 rounded-full text-xs font-medium ${log.event === 0 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                                                }`}>
-                                                {getEventLabel(log.event)}
-                                            </div>
-                                        </div>
+                                        </button>
                                     ))}
                                 </div>
-                            ) : (
-                                <p className="text-gray-500 text-center py-4">Nenhuma atividade registrada hoje</p>
                             )}
-                        </div>
 
-                        {/* Stats */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-white rounded-2xl shadow-lg p-4 text-center">
-                                <p className="text-3xl font-bold text-[hsl(var(--brand-blue))]">{logs.length}</p>
-                                <p className="text-sm text-gray-600">Registros</p>
+                            {/* Student Card */}
+                            <div
+                                onClick={() => setShowStudentProfile(true)}
+                                className="bg-white rounded-2xl shadow-lg p-6 cursor-pointer active:scale-98 transition-transform relative overflow-hidden"
+                            >
+                                <div className="absolute top-0 right-0 p-4 opacity-10">
+                                    <UserIcon size={120} weight="fill" />
+                                </div>
+                                <div className="flex items-center gap-4 relative z-10">
+                                    {selectedStudent.foto_url ? (
+                                        <img src={selectedStudent.foto_url} alt={selectedStudent.nome} className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-sm" />
+                                    ) : (
+                                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] flex items-center justify-center text-white text-2xl font-bold border-4 border-white shadow-sm">
+                                            {selectedStudent.nome.charAt(0)}
+                                        </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <h2 className="text-xl font-bold text-gray-900 truncate">{selectedStudent.nome}</h2>
+                                        <p className="text-gray-600 text-sm truncate">{selectedStudent.escola?.nome || 'Escola não informada'}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-md font-medium truncate">
+                                                {selectedStudent.turma?.nome || 'Turma -'}
+                                            </span>
+                                            <span className="px-2 py-0.5 bg-green-50 text-green-700 text-xs rounded-md font-medium truncate">
+                                                {selectedStudent.serie?.nome || 'Série -'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="bg-gray-50 p-2 rounded-full text-gray-400">
+                                        <CaretRight size={24} weight="bold" />
+                                    </div>
+                                </div>
                             </div>
-                            <div className="bg-white rounded-2xl shadow-lg p-4 text-center">
-                                <p className="text-3xl font-bold text-[hsl(var(--brand-green))]">{messages.length}</p>
-                                <p className="text-sm text-gray-600">Mensagens</p>
+
+                            {/* Today's Activity */}
+                            <div className="bg-white rounded-2xl shadow-lg p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-4">Atividade de Hoje</h3>
+                                {getTodayLogs().length > 0 ? (
+                                    <div className="space-y-3">
+                                        {getTodayLogs().map((log) => (
+                                            <div key={log.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                                                {log.url_foto_aluno && (
+                                                    <img src={log.url_foto_aluno} alt="" className="w-12 h-12 rounded-full object-cover" />
+                                                )}
+                                                <div className="flex-1">
+                                                    <p className="font-medium text-gray-900">{getEventLabel(log.event)}</p>
+                                                    <p className="text-sm text-gray-600">{formatTime(log.data_do_log)}</p>
+                                                </div>
+                                                <div className={`px-3 py-1 rounded-full text-xs font-medium ${log.event === 0 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                                                    }`}>
+                                                    {getEventLabel(log.event)}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500 text-center py-4">Nenhuma atividade registrada hoje</p>
+                                )}
                             </div>
-                        </div>
-                    </motion.div>
-                )}
+
+                            {/* Stats */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-white rounded-2xl shadow-lg p-4 text-center">
+                                    <p className="text-3xl font-bold text-[hsl(var(--brand-blue))]">{logs.length}</p>
+                                    <p className="text-sm text-gray-600">Registros</p>
+                                </div>
+                                <div className="bg-white rounded-2xl shadow-lg p-4 text-center">
+                                    <p className="text-3xl font-bold text-[hsl(var(--brand-green))]">{messages.length}</p>
+                                    <p className="text-sm text-gray-600">Mensagens</p>
+                                </div>
+                            </div>
+                        </motion.div>
+                    ) : null)}
 
                 {activeTab === 'cameras' && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
@@ -598,27 +626,29 @@ const ResponsibleDashboard: React.FC = () => {
                 {activeTab === 'activity' && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                         <h2 className="text-xl font-bold text-gray-900 px-2">Histórico de Logs</h2>
-                        {logs.length > 0 ? (
+                        {logs.filter(log => !selectedStudent || log.nome_aluno === selectedStudent.nome).length > 0 ? (
                             <div className="space-y-3">
-                                {logs.map((log) => (
-                                    <div key={log.id} className="bg-white rounded-2xl shadow-lg p-4">
-                                        <div className="flex items-start gap-3">
-                                            {log.url_foto_aluno && (
-                                                <img src={log.url_foto_aluno} alt="" className="w-16 h-16 rounded-full object-cover" />
-                                            )}
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${log.event === 0 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                                                        }`}>
-                                                        {getEventLabel(log.event)}
-                                                    </span>
+                                {logs
+                                    .filter(log => !selectedStudent || log.nome_aluno === selectedStudent.nome)
+                                    .map((log) => (
+                                        <div key={log.id} className="bg-white rounded-2xl shadow-lg p-4">
+                                            <div className="flex items-start gap-3">
+                                                {log.url_foto_aluno && (
+                                                    <img src={log.url_foto_aluno} alt="" className="w-16 h-16 rounded-full object-cover" />
+                                                )}
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${log.event === 0 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                                                            }`}>
+                                                            {getEventLabel(log.event)}
+                                                        </span>
+                                                    </div>
+                                                    <p className="font-medium text-gray-900">{log.nome_aluno}</p>
+                                                    <p className="text-sm text-gray-600">{formatDate(log.data_do_log)} às {formatTime(log.data_do_log)}</p>
                                                 </div>
-                                                <p className="font-medium text-gray-900">{log.nome_aluno}</p>
-                                                <p className="text-sm text-gray-600">{formatDate(log.data_do_log)} às {formatTime(log.data_do_log)}</p>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
                             </div>
                         ) : (
                             <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
@@ -858,15 +888,7 @@ const ResponsibleDashboard: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
-                                        <input
-                                            type="text"
-                                            value={currentUser.whatsapp || ''}
-                                            disabled
-                                            className="w-full px-4 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-500"
-                                        />
-                                    </div>
+
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Email / Login</label>
@@ -895,6 +917,68 @@ const ResponsibleDashboard: React.FC = () => {
                                         Sair da Conta
                                     </button>
                                 </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* School Info Modal */}
+            <AnimatePresence>
+                {showSchoolInfo && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                        onClick={() => setShowSchoolInfo(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0.95 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+                        >
+                            <div className="p-6 border-b bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white flex justify-between items-center">
+                                <h3 className="text-xl font-bold">Informações da Escola</h3>
+                                <button onClick={() => setShowSchoolInfo(false)}>
+                                    <X size={28} weight="bold" />
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-6 flex flex-col items-center text-center">
+                                {selectedStudent?.escola?.logo_url ? (
+                                    <img
+                                        src={selectedStudent.escola.logo_url}
+                                        alt="Logo Escola"
+                                        className="w-32 h-32 object-contain"
+                                    />
+                                ) : (
+                                    <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+                                        <House size={48} weight="fill" />
+                                    </div>
+                                )}
+
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-900">
+                                        {selectedStudent?.escola?.nome || 'Escola'}
+                                    </h2>
+                                    <p className="text-gray-500 mt-1">
+                                        Entre em contato com o suporte para mais informações.
+                                    </p>
+                                </div>
+
+                                {selectedStudent?.escola?.suporte && (
+                                    <a
+                                        href={`https://wa.me/${selectedStudent.escola.suporte.replace(/\D/g, '')}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="w-full py-3 bg-[#25D366] text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center gap-2"
+                                    >
+                                        <ChatCircle size={24} weight="fill" />
+                                        Falar no WhatsApp
+                                    </a>
+                                )}
                             </div>
                         </motion.div>
                     </motion.div>
