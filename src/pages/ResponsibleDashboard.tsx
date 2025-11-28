@@ -66,7 +66,7 @@ type BuscaSeguraRequest = {
     video_solicitante_url: string;
     status: 'pendente' | 'aprovada' | 'rejeitada' | 'realizada';
     aluno_id: string;
-    created_at: string;
+    criado_em: string;
     aluno?: { nome: string; turma?: { nome: string } };
 };
 
@@ -217,7 +217,7 @@ const ResponsibleDashboard: React.FC = () => {
             .from('busca_segura')
             .select('*')
             .eq('solicitante', currentUser.id)
-            .order('created_at', { ascending: false });
+            .order('criado_em', { ascending: false });
 
         if (error) {
             console.error('Error fetching requests:', error);
@@ -973,7 +973,7 @@ const ResponsibleDashboard: React.FC = () => {
                                                     Aluno: <span className="font-medium">{students.find(s => s.id === req.aluno_id)?.nome || 'Aluno não encontrado'}</span>
                                                 </p>
                                                 <p className="text-xs text-gray-400 mt-2">
-                                                    Solicitado em {new Date(req.created_at).toLocaleDateString()}
+                                                    Solicitado em {new Date(req.criado_em).toLocaleDateString()}
                                                 </p>
                                             </div>
                                             <button
