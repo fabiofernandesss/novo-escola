@@ -434,17 +434,30 @@ const ResponsibleDashboard: React.FC = () => {
                             </button>
                         </div>
 
-                        {/* Mobile Profile Trigger */}
-                        <button
-                            onClick={() => setShowUserProfile(true)}
-                            className="md:hidden w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors font-bold text-lg overflow-hidden"
-                        >
-                            {currentUser?.foto_perfil ? (
-                                <img src={currentUser.foto_perfil} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                                currentUser?.nome?.charAt(0)
-                            )}
-                        </button>
+                        {/* Mobile Header Icons */}
+                        <div className="flex items-center gap-3 md:hidden">
+                            <button
+                                onClick={() => setShowSchoolInfo(true)}
+                                className="w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors font-bold text-lg overflow-hidden"
+                            >
+                                {selectedStudent?.escola?.logo_url ? (
+                                    <img src={selectedStudent.escola.logo_url} alt="Escola" className="w-full h-full object-cover" />
+                                ) : (
+                                    <House size={24} weight="fill" />
+                                )}
+                            </button>
+
+                            <button
+                                onClick={() => setShowUserProfile(true)}
+                                className="w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors font-bold text-lg overflow-hidden"
+                            >
+                                {currentUser?.foto_perfil ? (
+                                    <img src={currentUser.foto_perfil} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                    currentUser?.nome?.charAt(0)
+                                )}
+                            </button>
+                        </div>
                     </div>
 
                     {students.length > 1 && (
