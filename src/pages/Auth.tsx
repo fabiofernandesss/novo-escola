@@ -80,11 +80,17 @@ const Auth: React.FC = () => {
                     return;
                 }
 
-                // Only redirect to admin if user is admin AND active AND approved
-                if (userData?.tipo_usuario === 'admin' && userData?.status === 'ativo' && userData?.status_liberacao === 'Liberado') {
-                    navigate('/admin');
+                // Redirect based on user type
+                if (userData?.status === 'ativo' && userData?.status_liberacao === 'Liberado') {
+                    if (userData?.tipo_usuario === 'admin') {
+                        navigate('/admin');
+                    } else if (userData?.tipo_usuario === 'responsavel') {
+                        navigate('/responsavel');
+                    } else {
+                        navigate('/'); // Other user types go to home
+                    }
                 } else {
-                    navigate('/'); // Or /dashboard if it existed
+                    navigate('/');
                 }
             }
         }
