@@ -80,6 +80,7 @@ const ResponsibleDashboard: React.FC = () => {
     const [cameras, setCameras] = useState<CameraType[]>([]);
     const [camerasLoading, setCamerasLoading] = useState(false);
     const [buscaSeguraRequests, setBuscaSeguraRequests] = useState<BuscaSeguraRequest[]>([]);
+    const [selectedBuscaSegura, setSelectedBuscaSegura] = useState<BuscaSeguraRequest | null>(null);
     const [showBuscaSeguraModal, setShowBuscaSeguraModal] = useState(false);
     const [activeTab, setActiveTab] = useState<'home' | 'cameras' | 'activity' | 'messages' | 'busca-segura'>('home');
     const [loading, setLoading] = useState(true);
@@ -332,8 +333,11 @@ const ResponsibleDashboard: React.FC = () => {
     const startRecording = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
+                videoRef.current.muted = true;
+                await videoRef.current.play().catch(e => console.error("Error playing preview:", e));
             }
 
             // Prefer MP4, fallback to WebM
@@ -355,18 +359,19 @@ const ResponsibleDashboard: React.FC = () => {
             };
 
             mediaRecorder.onstop = () => {
-                // Use the actual mime type from the recorder or fallback
                 const type = mediaRecorder.mimeType || mimeType;
-                const blob = new Blob(chunks, { type: type.split(';')[0] }); // Remove codecs for cleaner type
+                const blob = new Blob(chunks, { type: type.split(';')[0] });
                 const url = URL.createObjectURL(blob);
                 setVideoPreview(url);
                 setVideoBlob(blob);
                 stream.getTracks().forEach(track => track.stop());
             };
 
-            mediaRecorder.start();
+            mediaRecorder.start(1000);
             setIsRecording(true);
             setRecordingTime(0);
+
+            if (recordingInterval.current) clearInterval(recordingInterval.current);
             recordingInterval.current = setInterval(() => {
                 setRecordingTime(prev => prev + 1);
             }, 1000);
@@ -690,7 +695,7 @@ const ResponsibleDashboard: React.FC = () => {
                     selectedStudent ? (
                         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                             {/* Quick Actions */}
-                            <div className="flex gap-2 overflow-x-auto pb-2">
+                            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                                 <button
                                     onClick={() => handleTabChange('busca-segura')}
                                     className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-100 whitespace-nowrap active:scale-95 transition-transform"
@@ -946,7 +951,11 @@ const ResponsibleDashboard: React.FC = () => {
                         {buscaSeguraRequests.length > 0 ? (
                             <div className="space-y-4">
                                 {buscaSeguraRequests.map((req) => (
-                                    <div key={req.id} className="bg-white rounded-2xl shadow-lg p-4">
+                                    <div
+                                        key={req.id}
+                                        onClick={() => setSelectedBuscaSegura(req)}
+                                        className="bg-white rounded-2xl shadow-lg p-4 cursor-pointer hover:shadow-xl transition-shadow"
+                                    >
                                         <div className="flex items-start gap-4">
                                             {req.foto_buscador_url ? (
                                                 <img src={req.foto_buscador_url} alt={req.nome_buscador} className="w-20 h-20 rounded-xl object-cover" />
@@ -1550,6 +1559,82 @@ const ResponsibleDashboard: React.FC = () => {
                                         {loading ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <ShieldCheck size={20} weight="bold" />}
                                         Criar Solicitação
                                     </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* View Busca Segura Details Modal */}
+            <AnimatePresence>
+                {selectedBuscaSegura && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+                        onClick={() => setSelectedBuscaSegura(null)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0.95 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg my-8 overflow-hidden"
+                        >
+                            <div className="p-6 border-b bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white flex justify-between items-center">
+                                <h3 className="text-xl font-bold flex items-center gap-2">
+                                    <ShieldCheck size={24} weight="bold" />
+                                    Detalhes da Solicitação
+                                </h3>
+                                <button onClick={() => setSelectedBuscaSegura(null)}>
+                                    <X size={28} weight="bold" />
+                                </button>
+                            </div>
+
+                            <div className="p-6 space-y-6">
+                                <div className="flex flex-col items-center text-center">
+                                    {selectedBuscaSegura.foto_buscador_url ? (
+                                        <img src={selectedBuscaSegura.foto_buscador_url} alt={selectedBuscaSegura.nome_buscador} className="w-32 h-32 rounded-full object-cover border-4 border-gray-100 shadow-lg mb-4" />
+                                    ) : (
+                                        <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 mb-4">
+                                            <UserIcon size={64} weight="fill" />
+                                        </div>
+                                    )}
+                                    <h2 className="text-2xl font-bold text-gray-900">{selectedBuscaSegura.nome_buscador}</h2>
+                                    <p className="text-gray-500">Doc: {selectedBuscaSegura.doc_buscador}</p>
+                                    <div className={`mt-2 px-4 py-1 rounded-full text-sm font-bold inline-block ${selectedBuscaSegura.status === 'aprovada' ? 'bg-green-100 text-green-700' :
+                                            selectedBuscaSegura.status === 'rejeitada' ? 'bg-red-100 text-red-700' :
+                                                selectedBuscaSegura.status === 'realizada' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-yellow-100 text-yellow-700'
+                                        }`}>
+                                        {selectedBuscaSegura.status.toUpperCase()}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500">Aluno</p>
+                                        <p className="text-gray-900 font-medium">{students.find(s => s.id === selectedBuscaSegura.aluno_id)?.nome || 'Aluno não encontrado'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500">Solicitado em</p>
+                                        <p className="text-gray-900 font-medium">{new Date(selectedBuscaSegura.criado_em).toLocaleString()}</p>
+                                    </div>
+
+                                    {selectedBuscaSegura.video_solicitante_url && (
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500 mb-2">Vídeo de Autorização</p>
+                                            <div className="bg-black rounded-xl overflow-hidden aspect-video">
+                                                <video
+                                                    src={selectedBuscaSegura.video_solicitante_url}
+                                                    controls
+                                                    className="w-full h-full object-contain"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </motion.div>
