@@ -430,6 +430,49 @@ const ResponsibleDashboard: React.FC = () => {
                                                 <span className="text-xs text-gray-700 truncate max-w-[64px]">{msg.escola?.nome || 'Escola'}</span>
                                             </button>
                                         ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Student Card */}
+                            <div
+                                onClick={() => setShowStudentProfile(true)}
+                                className="bg-white rounded-2xl shadow-lg p-6 cursor-pointer active:scale-98 transition-transform relative overflow-hidden"
+                            >
+                                <div className="absolute top-0 right-0 p-4 opacity-10">
+                                    <UserIcon size={120} weight="fill" />
+                                </div>
+                                <div className="flex items-center gap-4 relative z-10">
+                                    {selectedStudent.foto_url ? (
+                                        <img src={selectedStudent.foto_url} alt={selectedStudent.nome} className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-sm" />
+                                    ) : (
+                                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] flex items-center justify-center text-white text-2xl font-bold border-4 border-white shadow-sm">
+                                            {selectedStudent.nome.charAt(0)}
+                                        </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <h2 className="text-xl font-bold text-gray-900 truncate">{selectedStudent.nome}</h2>
+                                        <p className="text-gray-600 text-sm truncate">{selectedStudent.escola?.nome || 'Escola não informada'}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-md font-medium truncate">
+                                                {selectedStudent.turma?.nome || 'Turma -'}
+                                            </span>
+                                            <span className="px-2 py-0.5 bg-green-50 text-green-700 text-xs rounded-md font-medium truncate">
+                                                {selectedStudent.serie?.nome || 'Série -'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="bg-gray-50 p-2 rounded-full text-gray-400">
+                                        <CaretRight size={24} weight="bold" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Today's Activity */}
+                            <div className="bg-white rounded-2xl shadow-lg p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-4">Atividade de Hoje</h3>
+                                {getTodayLogs().length > 0 ? (
+                                    <div className="space-y-3">
                                         {getTodayLogs().map((log) => (
                                             <div key={log.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                                                 {log.url_foto_aluno && (
@@ -451,6 +494,7 @@ const ResponsibleDashboard: React.FC = () => {
                                 )}
                             </div>
 
+                            {/* Stats */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="bg-white rounded-2xl shadow-lg p-4 text-center">
                                     <p className="text-3xl font-bold text-[hsl(var(--brand-blue))]">{logs.length}</p>
