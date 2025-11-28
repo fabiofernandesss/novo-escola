@@ -332,7 +332,15 @@ const ResponsibleDashboard: React.FC = () => {
                 videoRef.current.srcObject = stream;
             }
 
-            const mediaRecorder = new MediaRecorder(stream);
+            // Prefer MP4, fallback to WebM
+            let mimeType = 'video/webm';
+            if (MediaRecorder.isTypeSupported('video/mp4')) {
+                mimeType = 'video/mp4';
+            } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+                mimeType = 'video/webm;codecs=vp9';
+            }
+
+            const mediaRecorder = new MediaRecorder(stream, { mimeType });
             mediaRecorderRef.current = mediaRecorder;
             const chunks: Blob[] = [];
 
@@ -343,7 +351,9 @@ const ResponsibleDashboard: React.FC = () => {
             };
 
             mediaRecorder.onstop = () => {
-                const blob = new Blob(chunks, { type: 'video/webm' });
+                // Use the actual mime type from the recorder or fallback
+                const type = mediaRecorder.mimeType || mimeType;
+                const blob = new Blob(chunks, { type: type.split(';')[0] }); // Remove codecs for cleaner type
                 const url = URL.createObjectURL(blob);
                 setVideoPreview(url);
                 setVideoBlob(blob);
@@ -385,9 +395,7 @@ const ResponsibleDashboard: React.FC = () => {
             const photoPath = `busca-segura/fotos/${Date.now()}.${photoExt}`;
 
             const { error: photoError } = await supabase.storage
-                .from('mensagens-media') // Using existing bucket? Or create new? User didn't specify. I'll use mensagens-media or create new.
-                // Actually, I should check if I can use 'mensagens-media'. Or 'perfil-fotos'.
-                // I'll use 'mensagens-media' for now as it's public.
+                .from('mensagens-media')
                 .upload(photoPath, photoFile);
 
             if (photoError) throw photoError;
@@ -397,7 +405,10 @@ const ResponsibleDashboard: React.FC = () => {
                 .getPublicUrl(photoPath);
 
             // Upload Video
-            const videoPath = `busca-segura/videos/${Date.now()}.webm`;
+            // Determine extension from blob type
+            const videoExt = videoBlob.type.split('/')[1] || 'webm';
+            const videoPath = `busca-segura/videos/${Date.now()}.${videoExt}`;
+
             const { error: videoError } = await supabase.storage
                 .from('mensagens-media')
                 .upload(videoPath, videoBlob);
@@ -438,7 +449,7 @@ const ResponsibleDashboard: React.FC = () => {
 
         } catch (error) {
             console.error('Error creating request:', error);
-            alert('Erro ao criar solicitação.');
+            alert('Erro ao criar solicitação: ' + (error as any).message);
         } finally {
             setLoading(false);
         }
@@ -929,9 +940,9 @@ const ResponsibleDashboard: React.FC = () => {
                                                         <p className="text-sm text-gray-600">Doc: {req.doc_buscador}</p>
                                                     </div>
                                                     <span className={`px-3 py-1 rounded-full text-xs font-bold ${req.status === 'aprovada' ? 'bg-green-100 text-green-700' :
-                                                            req.status === 'rejeitada' ? 'bg-red-100 text-red-700' :
-                                                                req.status === 'realizada' ? 'bg-blue-100 text-blue-700' :
-                                                                    'bg-yellow-100 text-yellow-700'
+                                                        req.status === 'rejeitada' ? 'bg-red-100 text-red-700' :
+                                                            req.status === 'realizada' ? 'bg-blue-100 text-blue-700' :
+                                                                'bg-yellow-100 text-yellow-700'
                                                         }`}>
                                                         {req.status.toUpperCase()}
                                                     </span>
