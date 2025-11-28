@@ -75,6 +75,7 @@ const ResponsibleDashboard: React.FC = () => {
     const [editingName, setEditingName] = useState('');
     const cameraRefs = useRef<{ [key: string]: { video: HTMLVideoElement | null; hls: Hls | null } }>({});
     const cameraInterval = useRef<any>(null);
+    const nameInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         fetchUserAndStudents();
@@ -157,7 +158,15 @@ const ResponsibleDashboard: React.FC = () => {
     const fetchCameras = async () => {
         if (!selectedStudent?.escola_id) return;
 
-        if (cameras.length === 0) setCamerasLoading(true);
+        setCamerasLoading(true);
+
+        // Cleanup existing HLS instances
+        Object.values(cameraRefs.current).forEach(({ hls }) => {
+            if (hls) {
+                hls.destroy();
+            }
+        });
+        cameraRefs.current = {};
 
         const { data: camerasData } = await supabase
             .from('cameras')
@@ -226,6 +235,11 @@ const ResponsibleDashboard: React.FC = () => {
     const handleTabChange = (tab: 'home' | 'cameras' | 'activity' | 'messages') => {
         setActiveTab(tab);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        // Force camera refresh when switching to cameras tab
+        if (tab === 'cameras') {
+            setTimeout(() => fetchCameras(), 100);
+        }
     };
 
     const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -302,7 +316,11 @@ const ResponsibleDashboard: React.FC = () => {
 
     const getTodayLogs = () => {
         const today = new Date().toDateString();
-        return logs.filter(log => new Date(log.data_do_log).toDateString() === today);
+        return logs.filter(log => {
+            const isToday = new Date(log.data_do_log).toDateString() === today;
+            const isSelectedStudent = selectedStudent ? log.nome_aluno === selectedStudent.nome : true;
+            return isToday && isSelectedStudent;
+        });
     };
 
     const openStory = (index: number) => {
@@ -389,7 +407,7 @@ const ResponsibleDashboard: React.FC = () => {
 
                             <button
                                 onClick={() => setShowUserProfile(true)}
-                                className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors font-bold text-lg overflow-hidden"
+                                className="w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors font-bold text-lg overflow-hidden"
                             >
                                 {currentUser?.foto_perfil ? (
                                     <img src={currentUser.foto_perfil} alt="" className="w-full h-full object-cover" />
@@ -402,7 +420,7 @@ const ResponsibleDashboard: React.FC = () => {
                         {/* Mobile Profile Trigger */}
                         <button
                             onClick={() => setShowUserProfile(true)}
-                            className="md:hidden w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors font-bold text-lg overflow-hidden"
+                            className="md:hidden w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors font-bold text-lg overflow-hidden"
                         >
                             {currentUser?.foto_perfil ? (
                                 <img src={currentUser.foto_perfil} alt="" className="w-full h-full object-cover" />
@@ -418,7 +436,7 @@ const ResponsibleDashboard: React.FC = () => {
                                 <button
                                     key={student.id}
                                     onClick={() => setSelectedStudent(student)}
-                                    className={`flex-shrink-0 px-4 py-2 rounded-full font-medium transition-all ${selectedStudent?.id === student.id
+                                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${selectedStudent?.id === student.id
                                         ? 'bg-white text-[hsl(var(--brand-blue))]'
                                         : 'bg-white/20 text-white hover:bg-white/30'
                                         }`}
@@ -437,35 +455,32 @@ const ResponsibleDashboard: React.FC = () => {
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                         {/* Instagram-style Stories */}
                         {videoMessages.length > 0 && (
-                            <div className="bg-white rounded-2xl shadow-lg p-4">
-                                <div className="flex gap-3 overflow-x-auto pb-2">
-                                    {videoMessages.map((msg, idx) => (
-                                        <button
-                                            key={msg.id}
-                                            onClick={() => openStory(idx)}
-                                            className="flex-shrink-0 flex flex-col items-center gap-2"
-                                        >
-                                            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-500 p-0.5">
-                                                <div className="w-full h-full rounded-full bg-white p-0.5 overflow-hidden relative">
-                                                    {msg.media_url ? (
-                                                        <video
-                                                            src={getMediaUrl(msg.media_url, msg.media_bucket)}
-                                                            className="w-full h-full object-cover rounded-full"
-                                                            muted
-                                                            playsInline
-                                                            preload="metadata"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                                                            <Play size={20} weight="fill" className="text-gray-400" />
-                                                        </div>
-                                                    )}
-                                                </div>
+                            <div className="flex gap-3 overflow-x-auto pb-2">
+                                {videoMessages.map((msg, idx) => (
+                                    <button
+                                        key={msg.id}
+                                        onClick={() => openStory(idx)}
+                                        className="flex-shrink-0"
+                                    >
+                                        <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-500 p-0.5">
+                                            <div className="w-full h-full rounded-full bg-white p-0.5 overflow-hidden relative">
+                                                {msg.media_url ? (
+                                                    <video
+                                                        src={getMediaUrl(msg.media_url, msg.media_bucket)}
+                                                        className="w-full h-full object-cover rounded-full"
+                                                        muted
+                                                        playsInline
+                                                        preload="metadata"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                                        <Play size={20} weight="fill" className="text-gray-400" />
+                                                    </div>
+                                                )}
                                             </div>
-                                            <span className="text-xs text-gray-700 truncate max-w-[64px]">{msg.escola?.nome || 'Escola'}</span>
-                                        </button>
-                                    ))}
-                                </div>
+                                        </div>
+                                    </button>
+                                ))}
                             </div>
                         )}
 
@@ -827,12 +842,19 @@ const ResponsibleDashboard: React.FC = () => {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
                                         <div className="relative">
                                             <input
+                                                ref={nameInputRef}
                                                 type="text"
                                                 value={editingName}
                                                 onChange={(e) => setEditingName(e.target.value)}
                                                 className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[hsl(var(--brand-blue))] focus:border-transparent"
                                             />
-                                            <PencilSimple size={20} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                            <button
+                                                onClick={() => nameInputRef.current?.focus()}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                                type="button"
+                                            >
+                                                <PencilSimple size={20} />
+                                            </button>
                                         </div>
                                     </div>
 
