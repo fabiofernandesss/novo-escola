@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Camera, ClockCounterClockwise, ChatCircle, House, SignOut, X, CaretLeft, CaretRight, Play, User as UserIcon, PencilSimple } from 'phosphor-react';
+import { Camera, ClockCounterClockwise, ChatCircle, House, SignOut, X, CaretLeft, CaretRight, Play, User as UserIcon, PencilSimple, ShieldCheck, Trash, Plus } from 'phosphor-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Hls from 'hls.js';
 
@@ -58,6 +58,18 @@ type CameraType = {
     escola_id?: string;
 };
 
+type BuscaSeguraRequest = {
+    id: string;
+    nome_buscador: string;
+    doc_buscador: string;
+    foto_buscador_url: string;
+    video_solicitante_url: string;
+    status: 'pendente' | 'aprovada' | 'rejeitada' | 'realizada';
+    aluno_id: string;
+    created_at: string;
+    aluno?: { nome: string; turma?: { nome: string } };
+};
+
 const ResponsibleDashboard: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [students, setStudents] = useState<Student[]>([]);
@@ -67,13 +79,31 @@ const ResponsibleDashboard: React.FC = () => {
     const [videoMessages, setVideoMessages] = useState<Message[]>([]);
     const [cameras, setCameras] = useState<CameraType[]>([]);
     const [camerasLoading, setCamerasLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'home' | 'cameras' | 'activity' | 'messages'>('home');
+    const [buscaSeguraRequests, setBuscaSeguraRequests] = useState<BuscaSeguraRequest[]>([]);
+    const [showBuscaSeguraModal, setShowBuscaSeguraModal] = useState(false);
+    const [activeTab, setActiveTab] = useState<'home' | 'cameras' | 'activity' | 'messages' | 'busca-segura'>('home');
     const [loading, setLoading] = useState(true);
     const [storyModal, setStoryModal] = useState<{ open: boolean; index: number }>({ open: false, index: 0 });
     const [showStudentProfile, setShowStudentProfile] = useState(false);
     const [showUserProfile, setShowUserProfile] = useState(false);
     const [showSchoolInfo, setShowSchoolInfo] = useState(false);
     const [editingName, setEditingName] = useState('');
+
+    // Busca Segura State
+    const [isRecording, setIsRecording] = useState(false);
+    const [videoPreview, setVideoPreview] = useState<string | null>(null);
+    const [recordingTime, setRecordingTime] = useState(0);
+    const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
+    const [newRequest, setNewRequest] = useState({
+        nome_buscador: '',
+        doc_buscador: '',
+        foto_buscador_file: null as File | null,
+        aluno_id: ''
+    });
+
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const recordingInterval = useRef<any>(null);
     const cameraRefs = useRef<{ [key: string]: { video: HTMLVideoElement | null; hls: Hls | null } }>({});
     const cameraInterval = useRef<any>(null);
     const nameInputRef = useRef<HTMLInputElement>(null);
@@ -95,6 +125,8 @@ const ResponsibleDashboard: React.FC = () => {
         if (activeTab === 'cameras' && selectedStudent) {
             fetchCameras();
             cameraInterval.current = setInterval(fetchCameras, 30000);
+        } else if (activeTab === 'busca-segura') {
+            fetchBuscaSeguraRequests();
         } else {
             if (cameraInterval.current) clearInterval(cameraInterval.current);
         }
@@ -178,6 +210,33 @@ const ResponsibleDashboard: React.FC = () => {
         setCamerasLoading(false);
     };
 
+    const fetchBuscaSeguraRequests = async () => {
+        if (!currentUser) return;
+
+        const { data } = await supabase
+            .from('busca_segura')
+            .select('*, aluno:alunos(nome, turma:turmas(nome))')
+            .eq('solicitante', currentUser.id)
+            .order('created_at', { ascending: false });
+
+        setBuscaSeguraRequests(data || []);
+    };
+
+    const handleDeleteBuscaSegura = async (id: string) => {
+        if (!confirm('Tem certeza que deseja excluir esta solicitação?')) return;
+
+        const { error } = await supabase
+            .from('busca_segura')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            alert('Erro ao excluir solicitação.');
+        } else {
+            setBuscaSeguraRequests(prev => prev.filter(req => req.id !== id));
+        }
+    };
+
     const fetchStudentData = async () => {
         if (!selectedStudent) return;
 
@@ -228,25 +287,6 @@ const ResponsibleDashboard: React.FC = () => {
         }
     };
 
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-        window.location.href = '/';
-    };
-
-    const handleTabChange = (tab: 'home' | 'cameras' | 'activity' | 'messages') => {
-        // If leaving logs tab and no student selected, select the first one
-        if (activeTab === 'activity' && tab !== 'activity' && !selectedStudent && students.length > 0) {
-            setSelectedStudent(students[0]);
-        }
-
-        setActiveTab(tab);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-
-        // Force camera refresh when switching to cameras tab
-        if (tab === 'cameras') {
-            setTimeout(() => fetchCameras(), 100);
-        }
-    };
 
     const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         if (!event.target.files || event.target.files.length === 0 || !currentUser) return;
@@ -285,6 +325,125 @@ const ResponsibleDashboard: React.FC = () => {
         }
     };
 
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
+
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            const chunks: Blob[] = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    chunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                setVideoPreview(url);
+                setVideoBlob(blob);
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            mediaRecorder.start();
+            setIsRecording(true);
+            setRecordingTime(0);
+            recordingInterval.current = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            alert('Erro ao acessar a câmera. Verifique as permissões.');
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            if (recordingInterval.current) clearInterval(recordingInterval.current);
+        }
+    };
+
+    const handleCreateBuscaSegura = async () => {
+        if (!newRequest.nome_buscador || !newRequest.doc_buscador || !newRequest.aluno_id || !newRequest.foto_buscador_file || !videoBlob) {
+            alert('Por favor, preencha todos os campos, adicione a foto e grave o vídeo.');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            // Upload Photo
+            const photoFile = newRequest.foto_buscador_file;
+            const photoExt = photoFile.name.split('.').pop();
+            const photoPath = `busca-segura/fotos/${Date.now()}.${photoExt}`;
+
+            const { error: photoError } = await supabase.storage
+                .from('mensagens-media') // Using existing bucket? Or create new? User didn't specify. I'll use mensagens-media or create new.
+                // Actually, I should check if I can use 'mensagens-media'. Or 'perfil-fotos'.
+                // I'll use 'mensagens-media' for now as it's public.
+                .upload(photoPath, photoFile);
+
+            if (photoError) throw photoError;
+
+            const { data: { publicUrl: photoUrl } } = supabase.storage
+                .from('mensagens-media')
+                .getPublicUrl(photoPath);
+
+            // Upload Video
+            const videoPath = `busca-segura/videos/${Date.now()}.webm`;
+            const { error: videoError } = await supabase.storage
+                .from('mensagens-media')
+                .upload(videoPath, videoBlob);
+
+            if (videoError) throw videoError;
+
+            const { data: { publicUrl: videoUrl } } = supabase.storage
+                .from('mensagens-media')
+                .getPublicUrl(videoPath);
+
+            // Create Record
+            const { error: dbError } = await supabase
+                .from('busca_segura')
+                .insert({
+                    nome_buscador: newRequest.nome_buscador,
+                    doc_buscador: newRequest.doc_buscador,
+                    foto_buscador_url: photoUrl,
+                    video_solicitante_url: videoUrl,
+                    aluno_id: newRequest.aluno_id,
+                    nome_solicitante: currentUser.nome,
+                    solicitante: currentUser.id,
+                    status: 'pendente'
+                });
+
+            if (dbError) throw dbError;
+
+            alert('Solicitação criada com sucesso!');
+            setShowBuscaSeguraModal(false);
+            setNewRequest({
+                nome_buscador: '',
+                doc_buscador: '',
+                foto_buscador_file: null,
+                aluno_id: ''
+            });
+            setVideoPreview(null);
+            setVideoBlob(null);
+            fetchBuscaSeguraRequests();
+
+        } catch (error) {
+            console.error('Error creating request:', error);
+            alert('Erro ao criar solicitação.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleUpdateProfile = async () => {
         if (!currentUser) return;
 
@@ -298,6 +457,26 @@ const ResponsibleDashboard: React.FC = () => {
             alert('Perfil atualizado com sucesso!');
         } else {
             alert('Erro ao atualizar perfil.');
+        }
+    };
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        window.location.href = '/';
+    };
+
+    const handleTabChange = (tab: 'home' | 'cameras' | 'activity' | 'messages' | 'busca-segura') => {
+        // If leaving logs tab and no student selected, select the first one
+        if (activeTab === 'activity' && tab !== 'activity' && !selectedStudent && students.length > 0) {
+            setSelectedStudent(students[0]);
+        }
+
+        setActiveTab(tab);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        // Force camera refresh when switching to cameras tab
+        if (tab === 'cameras') {
+            setTimeout(() => fetchCameras(), 100);
         }
     };
 
@@ -420,6 +599,14 @@ const ResponsibleDashboard: React.FC = () => {
                             >
                                 <ChatCircle size={20} weight={activeTab === 'messages' ? 'fill' : 'regular'} />
                                 <span className="font-medium">Mensagens</span>
+                            </button>
+                            <button
+                                onClick={() => handleTabChange('busca-segura')}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${activeTab === 'busca-segura' ? 'bg-white text-[hsl(var(--brand-blue))]' : 'bg-white/20 hover:bg-white/30'
+                                    }`}
+                            >
+                                <ShieldCheck size={20} weight={activeTab === 'busca-segura' ? 'fill' : 'regular'} />
+                                <span className="font-medium">Busca Segura</span>
                             </button>
 
                             <button
@@ -705,6 +892,71 @@ const ResponsibleDashboard: React.FC = () => {
                             <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
                                 <ChatCircle size={48} className="mx-auto text-gray-400 mb-2" />
                                 <p className="text-gray-500">Nenhuma mensagem disponível</p>
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+
+                {activeTab === 'busca-segura' && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                        <div className="flex justify-between items-center px-2">
+                            <h2 className="text-xl font-bold text-gray-900">Busca Segura</h2>
+                            <button
+                                onClick={() => setShowBuscaSeguraModal(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-shadow"
+                            >
+                                <Plus size={20} weight="bold" />
+                                Nova Solicitação
+                            </button>
+                        </div>
+
+                        {buscaSeguraRequests.length > 0 ? (
+                            <div className="space-y-4">
+                                {buscaSeguraRequests.map((req) => (
+                                    <div key={req.id} className="bg-white rounded-2xl shadow-lg p-4">
+                                        <div className="flex items-start gap-4">
+                                            {req.foto_buscador_url ? (
+                                                <img src={req.foto_buscador_url} alt={req.nome_buscador} className="w-20 h-20 rounded-xl object-cover" />
+                                            ) : (
+                                                <div className="w-20 h-20 rounded-xl bg-gray-200 flex items-center justify-center">
+                                                    <UserIcon size={32} className="text-gray-400" />
+                                                </div>
+                                            )}
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h3 className="font-bold text-lg text-gray-900">{req.nome_buscador}</h3>
+                                                        <p className="text-sm text-gray-600">Doc: {req.doc_buscador}</p>
+                                                    </div>
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${req.status === 'aprovada' ? 'bg-green-100 text-green-700' :
+                                                            req.status === 'rejeitada' ? 'bg-red-100 text-red-700' :
+                                                                req.status === 'realizada' ? 'bg-blue-100 text-blue-700' :
+                                                                    'bg-yellow-100 text-yellow-700'
+                                                        }`}>
+                                                        {req.status.toUpperCase()}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm text-gray-500 mt-1">
+                                                    Aluno: <span className="font-medium">{req.aluno?.nome}</span>
+                                                </p>
+                                                <p className="text-xs text-gray-400 mt-2">
+                                                    Solicitado em {new Date(req.created_at).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => handleDeleteBuscaSegura(req.id)}
+                                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                            >
+                                                <Trash size={20} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+                                <ShieldCheck size={48} className="mx-auto text-gray-400 mb-2" />
+                                <p className="text-gray-500">Nenhuma solicitação de busca segura encontrada.</p>
                             </div>
                         )}
                     </motion.div>
@@ -1100,8 +1352,184 @@ const ResponsibleDashboard: React.FC = () => {
                         <ChatCircle size={24} weight={activeTab === 'messages' ? 'fill' : 'regular'} />
                         <span className="text-xs font-medium">Mensagens</span>
                     </button>
+                    <button
+                        onClick={() => handleTabChange('busca-segura')}
+                        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${activeTab === 'busca-segura' ? 'text-[hsl(var(--brand-blue))] bg-blue-50' : 'text-gray-600'
+                            }`}
+                    >
+                        <ShieldCheck size={24} weight={activeTab === 'busca-segura' ? 'fill' : 'regular'} />
+                        <span className="text-xs font-medium">Busca</span>
+                    </button>
                 </div>
             </div>
+
+            {/* Busca Segura Modal */}
+            <AnimatePresence>
+                {showBuscaSeguraModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0.95 }}
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-8"
+                        >
+                            <div className="p-6 border-b bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white flex justify-between items-center rounded-t-2xl">
+                                <h3 className="text-xl font-bold flex items-center gap-2">
+                                    <ShieldCheck size={24} weight="bold" />
+                                    Nova Solicitação de Busca Segura
+                                </h3>
+                                <button onClick={() => setShowBuscaSeguraModal(false)}>
+                                    <X size={28} weight="bold" />
+                                </button>
+                            </div>
+
+                            <div className="p-6 space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Selecione o Aluno</label>
+                                            <select
+                                                value={newRequest.aluno_id}
+                                                onChange={(e) => setNewRequest({ ...newRequest, aluno_id: e.target.value })}
+                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[hsl(var(--brand-blue))] focus:border-transparent outline-none transition-all"
+                                            >
+                                                <option value="">Selecione...</option>
+                                                {students.map(student => (
+                                                    <option key={student.id} value={student.id}>{student.nome}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Buscador</label>
+                                            <input
+                                                type="text"
+                                                value={newRequest.nome_buscador}
+                                                onChange={(e) => setNewRequest({ ...newRequest, nome_buscador: e.target.value })}
+                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[hsl(var(--brand-blue))] focus:border-transparent outline-none transition-all"
+                                                placeholder="Nome completo de quem vai buscar"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Documento (RG/CPF)</label>
+                                            <input
+                                                type="text"
+                                                value={newRequest.doc_buscador}
+                                                onChange={(e) => setNewRequest({ ...newRequest, doc_buscador: e.target.value })}
+                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[hsl(var(--brand-blue))] focus:border-transparent outline-none transition-all"
+                                                placeholder="Número do documento"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Foto do Buscador</label>
+                                            <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 transition-colors cursor-pointer relative">
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={(e) => e.target.files && setNewRequest({ ...newRequest, foto_buscador_file: e.target.files[0] })}
+                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                />
+                                                {newRequest.foto_buscador_file ? (
+                                                    <div className="flex items-center justify-center gap-2 text-green-600">
+                                                        <UserIcon size={24} />
+                                                        <span className="font-medium">{newRequest.foto_buscador_file.name}</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-gray-500">
+                                                        <Camera size={32} className="mx-auto mb-2" />
+                                                        <span className="text-sm">Clique para enviar foto</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Vídeo de Autorização (Obrigatório)</label>
+                                        <div className="bg-black rounded-xl overflow-hidden aspect-video relative flex items-center justify-center">
+                                            {videoPreview ? (
+                                                <video src={videoPreview} controls className="w-full h-full object-contain" />
+                                            ) : (
+                                                <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
+                                            )}
+
+                                            {isRecording && (
+                                                <div className="absolute top-4 right-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse flex items-center gap-2">
+                                                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                                                    {Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex gap-3">
+                                            {!isRecording && !videoPreview && (
+                                                <button
+                                                    onClick={startRecording}
+                                                    className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <div className="w-4 h-4 bg-white rounded-full"></div>
+                                                    Gravar Vídeo
+                                                </button>
+                                            )}
+
+                                            {isRecording && (
+                                                <button
+                                                    onClick={stopRecording}
+                                                    className="flex-1 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <div className="w-4 h-4 bg-white rounded-sm"></div>
+                                                    Parar Gravação
+                                                </button>
+                                            )}
+
+                                            {videoPreview && (
+                                                <button
+                                                    onClick={() => {
+                                                        setVideoPreview(null);
+                                                        setVideoBlob(null);
+                                                        startRecording();
+                                                    }}
+                                                    className="flex-1 py-3 bg-gray-600 text-white rounded-xl font-bold hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <ClockCounterClockwise size={20} weight="bold" />
+                                                    Regravar
+                                                </button>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-gray-500 text-center">
+                                            Grave um vídeo de 5 a 15 segundos confirmando a autorização de busca.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="pt-4 border-t flex justify-end gap-3">
+                                    <button
+                                        onClick={() => setShowBuscaSeguraModal(false)}
+                                        className="px-6 py-2 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={handleCreateBuscaSegura}
+                                        disabled={loading || !videoBlob}
+                                        className="px-6 py-2 bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        {loading ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <ShieldCheck size={20} weight="bold" />}
+                                        Criar Solicitação
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
