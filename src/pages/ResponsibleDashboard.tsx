@@ -89,14 +89,24 @@ const ResponsibleDashboard: React.FC = () => {
         setCurrentUser(userData);
 
         if (userData?.whatsapp) {
+            // Remove all non-numeric characters from WhatsApp for comparison
+            const cleanPhone = userData.whatsapp.replace(/\D/g, '');
+
+            // Fetch students where phone matches (comparing only digits)
             const { data: studentsData } = await supabase
                 .from('alunos')
-                .select('*, escola:escolas(nome), turma:turmas(nome), serie:series(nome)')
-                .or(`telefone_responsavel_1.eq.${userData.whatsapp},telefone_responsavel_2.eq.${userData.whatsapp}`);
+                .select('*, escola:escolas(nome), turma:turmas(nome), serie:series(nome)');
 
-            setStudents(studentsData || []);
-            if (studentsData && studentsData.length > 0) {
-                setSelectedStudent(studentsData[0]);
+            // Filter students client-side to match phone numbers (ignoring formatting)
+            const matchedStudents = studentsData?.filter(student => {
+                const phone1 = student.telefone_responsavel_1?.replace(/\D/g, '') || '';
+                const phone2 = student.telefone_responsavel_2?.replace(/\D/g, '') || '';
+                return phone1 === cleanPhone || phone2 === cleanPhone;
+            }) || [];
+
+            setStudents(matchedStudents);
+            if (matchedStudents.length > 0) {
+                setSelectedStudent(matchedStudents[0]);
             }
         }
         setLoading(false);
