@@ -223,15 +223,16 @@
 }
 
 @layer utilities {
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    /* IE and Edge */
-    scrollbar-width: none;
-    /* Firefox */
+  .scrollbar-light::-webkit-scrollbar {
+    height: 6px;
   }
 
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-    /* Chrome, Safari and Opera */
+  .scrollbar-light::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-light::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
   }
 }

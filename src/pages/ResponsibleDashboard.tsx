@@ -361,6 +361,13 @@ const ResponsibleDashboard: React.FC = () => {
             mediaRecorder.onstop = () => {
                 const type = mediaRecorder.mimeType || mimeType;
                 const blob = new Blob(chunks, { type: type.split(';')[0] });
+
+                if (blob.size === 0) {
+                    console.error("Recorded blob is empty");
+                    alert("Erro na gravação: Vídeo vazio. Tente novamente.");
+                    return;
+                }
+
                 const url = URL.createObjectURL(blob);
                 setVideoPreview(url);
                 setVideoBlob(blob);
@@ -695,7 +702,7 @@ const ResponsibleDashboard: React.FC = () => {
                     selectedStudent ? (
                         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                             {/* Quick Actions */}
-                            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-light">
                                 <button
                                     onClick={() => handleTabChange('busca-segura')}
                                     className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-100 whitespace-nowrap active:scale-95 transition-transform"
@@ -1411,7 +1418,7 @@ const ResponsibleDashboard: React.FC = () => {
                             initial={{ scale: 0.95 }}
                             animate={{ scale: 1 }}
                             exit={{ scale: 0.95 }}
-                            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-8"
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-8 max-h-[90vh] overflow-y-auto"
                         >
                             <div className="p-6 border-b bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white flex justify-between items-center rounded-t-2xl">
                                 <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1490,7 +1497,7 @@ const ResponsibleDashboard: React.FC = () => {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Vídeo de Autorização (Obrigatório)</label>
                                         <div className="bg-black rounded-xl overflow-hidden aspect-video relative flex items-center justify-center">
                                             {videoPreview ? (
-                                                <video src={videoPreview} controls className="w-full h-full object-contain" />
+                                                <video key={videoPreview} src={videoPreview} controls playsInline className="w-full h-full object-contain" />
                                             ) : (
                                                 <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
                                             )}
@@ -1581,7 +1588,7 @@ const ResponsibleDashboard: React.FC = () => {
                             animate={{ scale: 1 }}
                             exit={{ scale: 0.95 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg my-8 overflow-hidden"
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg my-8 max-h-[90vh] overflow-y-auto"
                         >
                             <div className="p-6 border-b bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white flex justify-between items-center">
                                 <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1605,9 +1612,9 @@ const ResponsibleDashboard: React.FC = () => {
                                     <h2 className="text-2xl font-bold text-gray-900">{selectedBuscaSegura.nome_buscador}</h2>
                                     <p className="text-gray-500">Doc: {selectedBuscaSegura.doc_buscador}</p>
                                     <div className={`mt-2 px-4 py-1 rounded-full text-sm font-bold inline-block ${selectedBuscaSegura.status === 'aprovada' ? 'bg-green-100 text-green-700' :
-                                            selectedBuscaSegura.status === 'rejeitada' ? 'bg-red-100 text-red-700' :
-                                                selectedBuscaSegura.status === 'realizada' ? 'bg-blue-100 text-blue-700' :
-                                                    'bg-yellow-100 text-yellow-700'
+                                        selectedBuscaSegura.status === 'rejeitada' ? 'bg-red-100 text-red-700' :
+                                            selectedBuscaSegura.status === 'realizada' ? 'bg-blue-100 text-blue-700' :
+                                                'bg-yellow-100 text-yellow-700'
                                         }`}>
                                         {selectedBuscaSegura.status.toUpperCase()}
                                     </div>
