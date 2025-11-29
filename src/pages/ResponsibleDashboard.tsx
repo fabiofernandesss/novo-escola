@@ -548,8 +548,16 @@ const ResponsibleDashboard: React.FC = () => {
     };
 
     const formatTime = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        if (!dateString) return '--:--';
+        // If the string doesn't have timezone info, assume it's UTC and append Z
+        // This fixes the issue where UTC times from DB are interpreted as local time
+        const timeValue = dateString.includes('Z') || dateString.includes('+') ? dateString : `${dateString}Z`;
+        const date = new Date(timeValue);
+        return date.toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'America/Sao_Paulo'
+        });
     };
 
     const getTodayLogs = () => {
@@ -840,8 +848,8 @@ const ResponsibleDashboard: React.FC = () => {
                                                         <div className="flex-1">
                                                             <p className="font-medium text-gray-900">{log.nome_aluno}</p>
                                                             <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${log.tipo_frequencia === 'ENTRADA_SAIDA' ? 'bg-green-100 text-green-700' :
-                                                                    log.tipo_frequencia === 'APENAS_ENTRADA' ? 'bg-yellow-100 text-yellow-700' :
-                                                                        'bg-gray-100 text-gray-700'
+                                                                log.tipo_frequencia === 'APENAS_ENTRADA' ? 'bg-yellow-100 text-yellow-700' :
+                                                                    'bg-gray-100 text-gray-700'
                                                                 }`}>
                                                                 {log.tipo_frequencia === 'ENTRADA_SAIDA' ? 'Completo' :
                                                                     log.tipo_frequencia === 'APENAS_ENTRADA' ? 'Em Aula' :
