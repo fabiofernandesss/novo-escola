@@ -718,11 +718,18 @@ const ResponsibleDashboard: React.FC = () => {
                                     <span className="text-sm font-medium text-gray-700">Câmeras</span>
                                 </button>
                                 <button
-                                    onClick={() => handleTabChange('activity')}
+                                    onClick={() => handleTabChange('messages')}
                                     className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-100 whitespace-nowrap active:scale-95 transition-transform"
                                 >
-                                    <ClockCounterClockwise size={18} className="text-[hsl(var(--brand-blue))]" weight="fill" />
-                                    <span className="text-sm font-medium text-gray-700">Atividades</span>
+                                    <ChatCircle size={18} className="text-[hsl(var(--brand-blue))]" weight="fill" />
+                                    <span className="text-sm font-medium text-gray-700">Mensagens</span>
+                                </button>
+                                <button
+                                    onClick={() => setShowUserProfile(true)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-100 whitespace-nowrap active:scale-95 transition-transform"
+                                >
+                                    <UserIcon size={18} className="text-[hsl(var(--brand-blue))]" weight="fill" />
+                                    <span className="text-sm font-medium text-gray-700">Perfil</span>
                                 </button>
                             </div>
 
@@ -760,7 +767,7 @@ const ResponsibleDashboard: React.FC = () => {
                             {/* Student Card */}
                             <div
                                 onClick={() => setShowStudentProfile(true)}
-                                className="bg-white rounded-2xl shadow-lg p-6 cursor-pointer active:scale-98 transition-transform relative overflow-hidden"
+                                className="bg-white rounded-2xl shadow-lg p-6 cursor-pointer hover:shadow-xl transition-all relative overflow-hidden"
                             >
                                 <div className="absolute top-0 right-0 p-4 opacity-10">
                                     <UserIcon size={120} weight="fill" />
@@ -791,41 +798,44 @@ const ResponsibleDashboard: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Today's Activity */}
-                            <div className="bg-white rounded-2xl shadow-lg p-6">
-                                <h3 className="text-lg font-bold text-gray-900 mb-4">Atividade de Hoje</h3>
-                                {getTodayLogs().length > 0 ? (
-                                    <div className="space-y-3">
-                                        {getTodayLogs().map((log) => (
-                                            <div key={log.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                                                {log.url_foto_aluno && (
-                                                    <img src={log.url_foto_aluno} alt="" className="w-12 h-12 rounded-full object-cover" />
-                                                )}
-                                                <div className="flex-1">
-                                                    <p className="font-medium text-gray-900">{getEventLabel(log.event)}</p>
-                                                    <p className="text-sm text-gray-600">{formatTime(log.data_do_log)}</p>
+                            {/* Content Grid for Tablet */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Today's Activity */}
+                                <div className="bg-white rounded-2xl shadow-lg p-6">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-4">Atividade de Hoje</h3>
+                                    {getTodayLogs().length > 0 ? (
+                                        <div className="space-y-3">
+                                            {getTodayLogs().map((log) => (
+                                                <div key={log.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                                                    {log.url_foto_aluno && (
+                                                        <img src={log.url_foto_aluno} alt="" className="w-12 h-12 rounded-full object-cover" />
+                                                    )}
+                                                    <div className="flex-1">
+                                                        <p className="font-medium text-gray-900">{getEventLabel(log.event)}</p>
+                                                        <p className="text-sm text-gray-600">{formatTime(log.data_do_log)}</p>
+                                                    </div>
+                                                    <div className={`px-3 py-1 rounded-full text-xs font-medium ${log.event === 0 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                                                        }`}>
+                                                        {getEventLabel(log.event)}
+                                                    </div>
                                                 </div>
-                                                <div className={`px-3 py-1 rounded-full text-xs font-medium ${log.event === 0 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                                                    }`}>
-                                                    {getEventLabel(log.event)}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-gray-500 text-center py-4">Nenhuma atividade registrada hoje</p>
-                                )}
-                            </div>
-
-                            {/* Stats */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-white rounded-2xl shadow-lg p-4 text-center">
-                                    <p className="text-3xl font-bold text-[hsl(var(--brand-blue))]">{logs.length}</p>
-                                    <p className="text-sm text-gray-600">Registros</p>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-gray-500 text-center py-4">Nenhuma atividade registrada hoje</p>
+                                    )}
                                 </div>
-                                <div className="bg-white rounded-2xl shadow-lg p-4 text-center">
-                                    <p className="text-3xl font-bold text-[hsl(var(--brand-green))]">{messages.length}</p>
-                                    <p className="text-sm text-gray-600">Mensagens</p>
+
+                                {/* Stats */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-white rounded-2xl shadow-lg p-4 text-center">
+                                        <p className="text-3xl font-bold text-[hsl(var(--brand-blue))]">{logs.length}</p>
+                                        <p className="text-sm text-gray-600">Registros</p>
+                                    </div>
+                                    <div className="bg-white rounded-2xl shadow-lg p-4 text-center">
+                                        <p className="text-3xl font-bold text-[hsl(var(--brand-green))]">{messages.length}</p>
+                                        <p className="text-sm text-gray-600">Mensagens</p>
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>
