@@ -79,6 +79,7 @@ const ResponsibleDashboard: React.FC = () => {
     const [videoMessages, setVideoMessages] = useState<Message[]>([]);
     const [cameras, setCameras] = useState<CameraType[]>([]);
     const [camerasLoading, setCamerasLoading] = useState(false);
+    const [cameraLoadingStates, setCameraLoadingStates] = useState<{ [key: string]: boolean }>({});
     const [buscaSeguraRequests, setBuscaSeguraRequests] = useState<BuscaSeguraRequest[]>([]);
     const [selectedBuscaSegura, setSelectedBuscaSegura] = useState<BuscaSeguraRequest | null>(null);
     const [showBuscaSeguraModal, setShowBuscaSeguraModal] = useState(false);
@@ -125,7 +126,7 @@ const ResponsibleDashboard: React.FC = () => {
     useEffect(() => {
         if (activeTab === 'cameras' && selectedStudent) {
             fetchCameras();
-            cameraInterval.current = setInterval(fetchCameras, 30000);
+            cameraInterval.current = setInterval(refreshCameraStreams, 30000);
         } else if (activeTab === 'busca-segura') {
             fetchBuscaSeguraRequests();
         } else {
@@ -211,6 +212,19 @@ const ResponsibleDashboard: React.FC = () => {
         setCamerasLoading(false);
     };
 
+    const refreshCameraStreams = () => {
+        // Only refresh HLS streams without destroying DOM
+        Object.entries(cameraRefs.current).forEach(([cameraId, { hls, video }]) => {
+            if (hls && video) {
+                const camera = cameras.find(c => c.id === cameraId);
+                if (camera) {
+                    hls.destroy();
+                    playCamera(cameraId, camera.url_m3u8, video);
+                }
+            }
+        });
+    };
+
     const fetchBuscaSeguraRequests = async () => {
         if (!currentUser) return;
 
@@ -260,6 +274,14 @@ const ResponsibleDashboard: React.FC = () => {
     };
 
     const playCamera = (cameraId: string, url: string, videoElement: HTMLVideoElement) => {
+        // Set loading state for this camera
+        setCameraLoadingStates(prev => ({ ...prev, [cameraId]: true }));
+
+        // Auto-hide loading after 30s
+        const loadingTimeout = setTimeout(() => {
+            setCameraLoadingStates(prev => ({ ...prev, [cameraId]: false }));
+        }, 30000);
+
         let src = url;
 
         if (window.location.protocol === 'https:' && src.includes('http://78.46.228.35')) {
@@ -282,11 +304,21 @@ const ResponsibleDashboard: React.FC = () => {
             hls.loadSource(src);
             hls.attachMedia(videoElement);
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                clearTimeout(loadingTimeout);
+                setCameraLoadingStates(prev => ({ ...prev, [cameraId]: false }));
                 videoElement.play().catch(e => console.error("Error playing:", e));
+            });
+            hls.on(Hls.Events.ERROR, (_event, data) => {
+                if (data.fatal) {
+                    clearTimeout(loadingTimeout);
+                    setCameraLoadingStates(prev => ({ ...prev, [cameraId]: false }));
+                }
             });
         } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
             videoElement.src = src;
             videoElement.addEventListener('loadedmetadata', () => {
+                clearTimeout(loadingTimeout);
+                setCameraLoadingStates(prev => ({ ...prev, [cameraId]: false }));
                 videoElement.play();
             });
         }
@@ -855,17 +887,27 @@ const ResponsibleDashboard: React.FC = () => {
                                         <div className="p-3 bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white">
                                             <h3 className="font-bold text-sm">{camera.nome}</h3>
                                         </div>
-                                        <video
-                                            ref={(el) => {
-                                                if (el && !cameraRefs.current[camera.id]) {
-                                                    playCamera(camera.id, camera.url_m3u8, el);
-                                                }
-                                            }}
-                                            className="w-full aspect-video bg-black"
-                                            playsInline
-                                            muted
-                                            autoPlay
-                                        />
+                                        <div className="relative aspect-video bg-black">
+                                            {cameraLoadingStates[camera.id] && (
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                                                        <p className="text-white text-sm">Carregando...</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <video
+                                                ref={(el) => {
+                                                    if (el && !cameraRefs.current[camera.id]) {
+                                                        playCamera(camera.id, camera.url_m3u8, el);
+                                                    }
+                                                }}
+                                                className="w-full aspect-video bg-black"
+                                                playsInline
+                                                muted
+                                                autoPlay
+                                            />
+                                        </div>
                                     </div>
                                 ))}
                             </div>
