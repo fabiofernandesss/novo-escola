@@ -549,15 +549,15 @@ const ResponsibleDashboard: React.FC = () => {
 
     const formatTime = (dateString: string) => {
         if (!dateString) return '--:--';
-        // If the string doesn't have timezone info, assume it's UTC and append Z
-        // This fixes the issue where UTC times from DB are interpreted as local time
-        const timeValue = dateString.includes('Z') || dateString.includes('+') ? dateString : `${dateString}Z`;
-        const date = new Date(timeValue);
-        return date.toLocaleTimeString('pt-BR', {
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'America/Sao_Paulo'
-        });
+        // Extract time directly to avoid timezone shifts
+        if (dateString.includes('T')) {
+            return dateString.split('T')[1].substring(0, 5);
+        }
+        // If it's just a time string like "07:00:00"
+        if (dateString.includes(':')) {
+            return dateString.substring(0, 5);
+        }
+        return dateString;
     };
 
     const getTodayLogs = () => {
@@ -1013,6 +1013,16 @@ const ResponsibleDashboard: React.FC = () => {
                                                 <div className="flex-1">
                                                     <div className="flex justify-between items-start">
                                                         <div>
+                                                            <p className="font-bold text-gray-900 text-lg capitalize">
+                                                                {new Date(log.dia + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                                            </p>
+                                                            <p className="text-sm text-gray-600 font-medium">{log.nome_aluno}</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="mt-3 grid grid-cols-2 gap-4">
+                                                        <div className="bg-green-50 p-2 rounded-lg">
+                                                            <p className="text-xs text-green-600 font-bold uppercase">Entrada</p>
                                                             <p className="text-green-900 font-mono text-lg">
                                                                 {log.entrada ? formatTime(log.entrada) : '--:--'}
                                                             </p>
