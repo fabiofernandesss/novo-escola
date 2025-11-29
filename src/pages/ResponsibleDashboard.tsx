@@ -80,6 +80,7 @@ const ResponsibleDashboard: React.FC = () => {
     const [cameras, setCameras] = useState<CameraType[]>([]);
     const [camerasLoading, setCamerasLoading] = useState(false);
     const [cameraLoadingStates, setCameraLoadingStates] = useState<{ [key: string]: boolean }>({});
+    const [messageFilter, setMessageFilter] = useState<string>('');
     const [buscaSeguraRequests, setBuscaSeguraRequests] = useState<BuscaSeguraRequest[]>([]);
     const [selectedBuscaSegura, setSelectedBuscaSegura] = useState<BuscaSeguraRequest | null>(null);
     const [showBuscaSeguraModal, setShowBuscaSeguraModal] = useState(false);
@@ -919,49 +920,29 @@ const ResponsibleDashboard: React.FC = () => {
                         )}
                     </motion.div>
                 )}
-
-                {activeTab === 'activity' && (
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                        <h2 className="text-xl font-bold text-gray-900 px-2">Histórico de Logs</h2>
-                        {logs.filter(log => !selectedStudent || log.nome_aluno === selectedStudent.nome).length > 0 ? (
-                            <div className="space-y-3">
-                                {logs
-                                    .filter(log => !selectedStudent || log.nome_aluno === selectedStudent.nome)
-                                    .map((log) => (
-                                        <div key={log.id} className="bg-white rounded-2xl shadow-lg p-4">
-                                            <div className="flex items-start gap-3">
-                                                {log.url_foto_aluno && (
-                                                    <img src={log.url_foto_aluno} alt="" className="w-16 h-16 rounded-full object-cover" />
-                                                )}
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${log.event === 0 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                                                            }`}>
-                                                            {getEventLabel(log.event)}
-                                                        </span>
-                                                    </div>
-                                                    <p className="font-medium text-gray-900">{log.nome_aluno}</p>
-                                                    <p className="text-sm text-gray-600">{formatDate(log.data_do_log)} às {formatTime(log.data_do_log)}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                            </div>
-                        ) : (
-                            <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-                                <ClockCounterClockwise size={48} className="mx-auto text-gray-400 mb-2" />
-                                <p className="text-gray-500">Nenhum log registrado</p>
-                            </div>
-                        )}
-                    </motion.div>
-                )}
-
                 {activeTab === 'messages' && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                        <h2 className="text-xl font-bold text-gray-900 px-2">Mensagens da Escola</h2>
-                        {messages.length > 0 ? (
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-2">
+                            <h2 className="text-xl font-bold text-gray-900">Mensagens da Escola</h2>
+                            <input
+                                type="date"
+                                value={messageFilter}
+                                onChange={(e) => setMessageFilter(e.target.value)}
+                                className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[hsl(var(--brand-blue))] focus:border-transparent outline-none transition-all"
+                                placeholder="Filtrar por data"
+                            />
+                        </div>
+                        {messages.filter(msg => {
+                            if (!messageFilter) return true;
+                            const msgDate = new Date(msg.published_at || msg.created_at).toISOString().split('T')[0];
+                            return msgDate === messageFilter;
+                        }).length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {messages.map((message) => (
+                                {messages.filter(msg => {
+                                    if (!messageFilter) return true;
+                                    const msgDate = new Date(msg.published_at || msg.created_at).toISOString().split('T')[0];
+                                    return msgDate === messageFilter;
+                                }).map((message) => (
                                     <div key={message.id} className="bg-white rounded-2xl shadow-lg p-4">
                                         {message.media_url && (
                                             message.tipo?.includes('video') ? (
@@ -988,7 +969,7 @@ const ResponsibleDashboard: React.FC = () => {
                         ) : (
                             <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
                                 <ChatCircle size={48} className="mx-auto text-gray-400 mb-2" />
-                                <p className="text-gray-500">Nenhuma mensagem disponível</p>
+                                <p className="text-gray-500">Nenhuma mensagem {messageFilter ? 'nesta data' : 'disponível'}</p>
                             </div>
                         )}
                     </motion.div>
