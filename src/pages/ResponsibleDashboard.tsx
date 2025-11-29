@@ -1681,6 +1681,109 @@ const ResponsibleDashboard: React.FC = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Instagram-style Stories Modal */}
+            <AnimatePresence>
+                {storyModal.open && videoMessages[storyModal.index] && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black flex items-center justify-center"
+                        onClick={() => setStoryModal({ open: false, index: 0 })}
+                    >
+                        {/* School Logo at Top */}
+                        <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
+                            {selectedStudent?.escola?.logo_url ? (
+                                <img
+                                    src={selectedStudent.escola.logo_url}
+                                    alt="Logo"
+                                    className="w-10 h-10 rounded-full object-cover border-2 border-white"
+                                />
+                            ) : (
+                                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                                    <House size={20} weight="fill" className="text-white" />
+                                </div>
+                            )}
+                            <span className="text-white font-bold text-sm drop-shadow-lg">
+                                {selectedStudent?.escola?.nome || 'Escola'}
+                            </span>
+                        </div>
+
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setStoryModal({ open: false, index: 0 })}
+                            className="absolute top-4 right-4 z-20 text-white"
+                        >
+                            <X size={32} weight="bold" />
+                        </button>
+
+                        {/* Progress Bars */}
+                        <div className="absolute top-2 left-0 right-0 z-20 flex gap-1 px-2">
+                            {videoMessages.map((_, idx) => (
+                                <div key={idx} className="flex-1 h-0.5 bg-white/30 rounded-full overflow-hidden">
+                                    <div
+                                        className={`h-full bg-white transition-all duration-300 ${idx < storyModal.index ? 'w-full' :
+                                                idx === storyModal.index ? 'w-full' : 'w-0'
+                                            }`}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Navigation Arrows */}
+                        {storyModal.index > 0 && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    prevStory();
+                                }}
+                                className="absolute left-4 z-20 text-white"
+                            >
+                                <CaretLeft size={48} weight="bold" />
+                            </button>
+                        )}
+                        {storyModal.index < videoMessages.length - 1 && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    nextStory();
+                                }}
+                                className="absolute right-4 z-20 text-white"
+                            >
+                                <CaretRight size={48} weight="bold" />
+                            </button>
+                        )}
+
+                        {/* Video Content - NO CONTROLS */}
+                        <video
+                            key={videoMessages[storyModal.index].id}
+                            src={getMediaUrl(
+                                videoMessages[storyModal.index].media_url,
+                                videoMessages[storyModal.index].media_bucket
+                            )}
+                            className="max-w-full max-h-full object-contain"
+                            autoPlay
+                            playsInline
+                            loop
+                            muted
+                            onClick={(e) => e.stopPropagation()}
+                        />
+
+                        {/* Story Info at Bottom */}
+                        <div className="absolute bottom-4 left-4 right-4 z-20 text-white">
+                            <h3 className="font-bold text-lg drop-shadow-lg">
+                                {videoMessages[storyModal.index].titulo}
+                            </h3>
+                            {videoMessages[storyModal.index].descricao && (
+                                <p className="text-sm mt-1 drop-shadow-lg">
+                                    {videoMessages[storyModal.index].descricao}
+                                </p>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
