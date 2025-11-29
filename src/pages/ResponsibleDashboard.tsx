@@ -1013,24 +1013,6 @@ const ResponsibleDashboard: React.FC = () => {
                                                 <div className="flex-1">
                                                     <div className="flex justify-between items-start">
                                                         <div>
-                                                            <p className="font-bold text-gray-900 text-lg capitalize">
-                                                                {new Date(log.dia + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                                                            </p>
-                                                            <p className="text-sm text-gray-600 font-medium">{log.nome_aluno}</p>
-                                                        </div>
-                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${log.tipo_frequencia === 'ENTRADA_SAIDA' ? 'bg-green-100 text-green-700' :
-                                                            log.tipo_frequencia === 'APENAS_ENTRADA' ? 'bg-yellow-100 text-yellow-700' :
-                                                                'bg-gray-100 text-gray-700'
-                                                            }`}>
-                                                            {log.tipo_frequencia === 'ENTRADA_SAIDA' ? 'Completo' :
-                                                                log.tipo_frequencia === 'APENAS_ENTRADA' ? 'Em Aula' :
-                                                                    log.tipo_frequencia.replace(/_/g, ' ')}
-                                                        </span>
-                                                    </div>
-
-                                                    <div className="mt-3 grid grid-cols-2 gap-4">
-                                                        <div className="bg-green-50 p-2 rounded-lg">
-                                                            <p className="text-xs text-green-600 font-bold uppercase">Entrada</p>
                                                             <p className="text-green-900 font-mono text-lg">
                                                                 {log.entrada ? formatTime(log.entrada) : '--:--'}
                                                             </p>
