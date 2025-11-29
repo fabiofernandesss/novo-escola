@@ -29,13 +29,14 @@ type Student = {
     serie?: { nome: string };
 };
 
-type Log = {
-    id: number;
+type DailyLog = {
+    dia: string;
     nome_aluno: string;
-    data_do_log: string;
-    event: number;
+    tipo_frequencia: string;
+    entrada: string;
+    saida: string;
+    tempo_na_escola_formatado: string;
     url_foto_aluno?: string;
-    time: number;
 };
 
 type Message = {
@@ -74,7 +75,7 @@ const ResponsibleDashboard: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [students, setStudents] = useState<Student[]>([]);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-    const [logs, setLogs] = useState<Log[]>([]);
+    const [logs, setLogs] = useState<DailyLog[]>([]);
     const [messages, setMessages] = useState<Message[]>([]);
     const [videoMessages, setVideoMessages] = useState<Message[]>([]);
     const [cameras, setCameras] = useState<CameraType[]>([]);
@@ -183,10 +184,10 @@ const ResponsibleDashboard: React.FC = () => {
     const fetchAllLogs = async (studentsList: Student[]) => {
         const studentNames = studentsList.map(s => s.nome);
         const { data: logsData } = await supabase
-            .from('logs')
+            .from('frequencia_diaria')
             .select('*')
             .in('nome_aluno', studentNames)
-            .order('data_do_log', { ascending: false })
+            .order('dia', { ascending: false })
             .limit(50);
         setLogs(logsData || []);
     };
@@ -551,18 +552,10 @@ const ResponsibleDashboard: React.FC = () => {
         return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     };
 
-    const getEventLabel = (event: number) => {
-        switch (event) {
-            case 0: return 'Entrada';
-            case 1: return 'Saída';
-            default: return 'Evento';
-        }
-    };
-
     const getTodayLogs = () => {
-        const today = new Date().toDateString();
+        const today = new Date().toISOString().split('T')[0];
         return logs.filter(log => {
-            const isToday = new Date(log.data_do_log).toDateString() === today;
+            const isToday = log.dia === today;
             const isSelectedStudent = selectedStudent ? log.nome_aluno === selectedStudent.nome : true;
             return isToday && isSelectedStudent;
         });
@@ -838,18 +831,33 @@ const ResponsibleDashboard: React.FC = () => {
                                     <h3 className="text-lg font-bold text-gray-900 mb-4">Atividade de Hoje</h3>
                                     {getTodayLogs().length > 0 ? (
                                         <div className="space-y-3">
-                                            {getTodayLogs().map((log) => (
-                                                <div key={log.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                                                    {log.url_foto_aluno && (
-                                                        <img src={log.url_foto_aluno} alt="" className="w-12 h-12 rounded-full object-cover" />
-                                                    )}
-                                                    <div className="flex-1">
-                                                        <p className="font-medium text-gray-900">{getEventLabel(log.event)}</p>
-                                                        <p className="text-sm text-gray-600">{formatTime(log.data_do_log)}</p>
+                                            {getTodayLogs().map((log, index) => (
+                                                <div key={`${log.dia}-${index}`} className="flex flex-col gap-3 p-3 bg-gray-50 rounded-xl">
+                                                    <div className="flex items-center gap-3">
+                                                        {log.url_foto_aluno && (
+                                                            <img src={log.url_foto_aluno} alt="" className="w-12 h-12 rounded-full object-cover" />
+                                                        )}
+                                                        <div className="flex-1">
+                                                            <p className="font-medium text-gray-900">{log.nome_aluno}</p>
+                                                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${log.tipo_frequencia === 'ENTRADA_SAIDA' ? 'bg-green-100 text-green-700' :
+                                                                    log.tipo_frequencia === 'APENAS_ENTRADA' ? 'bg-yellow-100 text-yellow-700' :
+                                                                        'bg-gray-100 text-gray-700'
+                                                                }`}>
+                                                                {log.tipo_frequencia === 'ENTRADA_SAIDA' ? 'Completo' :
+                                                                    log.tipo_frequencia === 'APENAS_ENTRADA' ? 'Em Aula' :
+                                                                        log.tipo_frequencia.replace(/_/g, ' ')}
+                                                            </span>
+                                                        </div>
                                                     </div>
-                                                    <div className={`px-3 py-1 rounded-full text-xs font-medium ${log.event === 0 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                                                        }`}>
-                                                        {getEventLabel(log.event)}
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div className="text-center">
+                                                            <p className="text-xs text-gray-500">Entrada</p>
+                                                            <p className="font-mono font-medium text-green-700">{log.entrada ? formatTime(log.entrada) : '--:--'}</p>
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <p className="text-xs text-gray-500">Saída</p>
+                                                            <p className="font-mono font-medium text-red-700">{log.saida && log.saida !== log.entrada ? formatTime(log.saida) : '--:--'}</p>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ))}
@@ -872,7 +880,8 @@ const ResponsibleDashboard: React.FC = () => {
                                 </div>
                             </div>
                         </motion.div>
-                    ) : null)}
+                    ) : null
+                )}
 
                 {activeTab === 'cameras' && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
@@ -920,6 +929,7 @@ const ResponsibleDashboard: React.FC = () => {
                         )}
                     </motion.div>
                 )}
+
                 {activeTab === 'messages' && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-2">
@@ -970,6 +980,75 @@ const ResponsibleDashboard: React.FC = () => {
                             <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
                                 <ChatCircle size={48} className="mx-auto text-gray-400 mb-2" />
                                 <p className="text-gray-500">Nenhuma mensagem {messageFilter ? 'nesta data' : 'disponível'}</p>
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+
+                {activeTab === 'activity' && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                        <h2 className="text-xl font-bold text-gray-900 px-2">Frequência Diária</h2>
+                        {logs.filter(log => !selectedStudent || log.nome_aluno === selectedStudent.nome).length > 0 ? (
+                            <div className="space-y-3">
+                                {logs
+                                    .filter(log => !selectedStudent || log.nome_aluno === selectedStudent.nome)
+                                    .map((log, index) => (
+                                        <div key={`${log.dia}-${index}`} className="bg-white rounded-2xl shadow-lg p-4">
+                                            <div className="flex items-start gap-3">
+                                                {log.url_foto_aluno ? (
+                                                    <img src={log.url_foto_aluno} alt="" className="w-16 h-16 rounded-full object-cover" />
+                                                ) : (
+                                                    <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+                                                        <UserIcon size={32} weight="fill" />
+                                                    </div>
+                                                )}
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <p className="font-bold text-gray-900 text-lg capitalize">
+                                                                {new Date(log.dia + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                                            </p>
+                                                            <p className="text-sm text-gray-600 font-medium">{log.nome_aluno}</p>
+                                                        </div>
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${log.tipo_frequencia === 'ENTRADA_SAIDA' ? 'bg-green-100 text-green-700' :
+                                                            log.tipo_frequencia === 'APENAS_ENTRADA' ? 'bg-yellow-100 text-yellow-700' :
+                                                                'bg-gray-100 text-gray-700'
+                                                            }`}>
+                                                            {log.tipo_frequencia === 'ENTRADA_SAIDA' ? 'Completo' :
+                                                                log.tipo_frequencia === 'APENAS_ENTRADA' ? 'Em Aula' :
+                                                                    log.tipo_frequencia.replace(/_/g, ' ')}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="mt-3 grid grid-cols-2 gap-4">
+                                                        <div className="bg-green-50 p-2 rounded-lg">
+                                                            <p className="text-xs text-green-600 font-bold uppercase">Entrada</p>
+                                                            <p className="text-green-900 font-mono text-lg">
+                                                                {log.entrada ? formatTime(log.entrada) : '--:--'}
+                                                            </p>
+                                                        </div>
+                                                        <div className="bg-red-50 p-2 rounded-lg">
+                                                            <p className="text-xs text-red-600 font-bold uppercase">Saída</p>
+                                                            <p className="text-red-900 font-mono text-lg">
+                                                                {log.saida && log.saida !== log.entrada ? formatTime(log.saida) : '--:--'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    {log.tempo_na_escola_formatado && (
+                                                        <div className="mt-2 text-xs text-gray-500 text-center">
+                                                            Tempo na escola: <span className="font-medium text-gray-700">{log.tempo_na_escola_formatado}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+                                <ClockCounterClockwise size={48} className="mx-auto text-gray-400 mb-2" />
+                                <p className="text-gray-500">Nenhum registro de frequência encontrado</p>
                             </div>
                         )}
                     </motion.div>
@@ -1724,7 +1803,7 @@ const ResponsibleDashboard: React.FC = () => {
                                 <div key={idx} className="flex-1 h-0.5 bg-white/30 rounded-full overflow-hidden">
                                     <div
                                         className={`h-full bg-white transition-all duration-300 ${idx < storyModal.index ? 'w-full' :
-                                                idx === storyModal.index ? 'w-full' : 'w-0'
+                                            idx === storyModal.index ? 'w-full' : 'w-0'
                                             }`}
                                     />
                                 </div>
