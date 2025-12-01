@@ -84,6 +84,8 @@ const Auth: React.FC = () => {
                 if (userData?.status === 'ativo' && userData?.status_liberacao === 'Liberado') {
                     if (userData?.tipo_usuario === 'admin') {
                         navigate('/admin');
+                    } else if (userData?.tipo_usuario === 'professor') {
+                        navigate('/professor');
                     } else if (userData?.tipo_usuario === 'responsavel') {
                         navigate('/responsavel');
                     } else {

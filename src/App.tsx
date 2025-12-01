@@ -3,6 +3,7 @@ import Home from './pages/Home';
 import Auth from './pages/Auth';
 import AwaitingApproval from './pages/AwaitingApproval';
 import ResponsibleDashboard from './pages/ResponsibleDashboard';
+import TeacherDashboard from './pages/TeacherDashboard';
 import AdminLayout from './layouts/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
@@ -21,6 +22,7 @@ function App() {
         <Route path="/auth" element={<Auth />} />
         <Route path="/awaiting-approval" element={<AwaitingApproval />} />
         <Route path="/responsavel" element={<ResponsibleDashboard />} />
+        <Route path="/professor" element={<TeacherDashboard />} />
 
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLayout />}>
