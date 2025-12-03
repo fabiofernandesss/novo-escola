@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { User as UserIcon, ChatCircle, ShieldCheck, SignOut, X, Plus, Pencil, Trash, Play, Stop, Phone, IdentificationCard } from 'phosphor-react';
+import { User as UserIcon, ChatCircle, ShieldCheck, SignOut, X, Plus, Pencil, Trash, Play, Stop, Phone, IdentificationCard, Camera } from 'phosphor-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import Hls from 'hls.js';
 
 type Student = {
     id: string;
@@ -40,14 +41,21 @@ type BuscaSeguraRequest = {
     foto_buscador_url: string;
     status: 'pendente' | 'aprovada' | 'rejeitada' | 'realizada';
     criado_em: string;
-    aluno?: { nome: string };
+    aluno_id?: string;
+};
+
+type CameraType = {
+    id: string;
+    nome: string;
+    url_m3u8: string;
+    escola_id?: string;
 };
 
 const TeacherDashboard: React.FC = () => {
     const navigate = useNavigate();
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [escolaId, setEscolaId] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'students' | 'messages' | 'busca-segura' | 'profile'>('students');
+    const [activeTab, setActiveTab] = useState<'students' | 'messages' | 'cameras' | 'busca-segura' | 'profile'>('students');
     const [loading, setLoading] = useState(true);
 
     // Students State
@@ -60,6 +68,12 @@ const TeacherDashboard: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
     const [messageFormData, setMessageFormData] = useState({ titulo: '', descricao: '', media: null as File | null });
+
+    // Cameras State
+    const [cameras, setCameras] = useState<CameraType[]>([]);
+    const [camerasLoading, setCamerasLoading] = useState(false);
+    const [cameraLoadingStates, setCameraLoadingStates] = useState<{ [key: string]: boolean }>({});
+    const cameraRefs = useRef<{ [key: string]: { video: HTMLVideoElement | null; hls: Hls | null } }>({});
 
     // Busca Segura State
     const [buscaSeguraRequests, setBuscaSeguraRequests] = useState<BuscaSeguraRequest[]>([]);
@@ -82,6 +96,7 @@ const TeacherDashboard: React.FC = () => {
         if (escolaId) {
             if (activeTab === 'students') fetchStudents();
             else if (activeTab === 'messages') fetchMessages();
+            else if (activeTab === 'cameras') fetchCameras();
             else if (activeTab === 'busca-segura') fetchBuscaSegura();
         }
     }, [activeTab, escolaId]);
@@ -147,14 +162,84 @@ const TeacherDashboard: React.FC = () => {
         setMessages(data || []);
     };
 
+    const fetchCameras = async () => {
+        if (!escolaId) return;
+
+        setCamerasLoading(true);
+
+        // Cleanup existing HLS instances
+        Object.values(cameraRefs.current).forEach(({ hls }) => {
+            if (hls) {
+                hls.destroy();
+            }
+        });
+        cameraRefs.current = {};
+
+        const { data: camerasData } = await supabase
+            .from('cameras')
+            .select('*')
+            .eq('escola_id', escolaId)
+            .eq('ativo', true);
+
+        setCameras(camerasData || []);
+        setCamerasLoading(false);
+
+        // Initialize loading states
+        const initialLoadingStates: { [key: string]: boolean } = {};
+        (camerasData || []).forEach(cam => {
+            initialLoadingStates[cam.id] = true;
+        });
+        setCameraLoadingStates(initialLoadingStates);
+    };
+
     const fetchBuscaSegura = async () => {
         if (!escolaId) return;
         const { data } = await supabase
             .from('busca_segura')
-            .select('*, aluno:alunos(nome)')
+            .select('*')
             .eq('escola_id', escolaId)
             .order('criado_em', { ascending: false });
         setBuscaSeguraRequests(data || []);
+    };
+
+    const initializeCamera = (cameraId: string, url: string, videoElement: HTMLVideoElement) => {
+        if (!videoElement) return;
+
+        cameraRefs.current[cameraId] = { video: videoElement, hls: null };
+
+        if (Hls.isSupported()) {
+            const hls = new Hls({
+                enableWorker: true,
+                lowLatencyMode: true,
+                backBufferLength: 90,
+            });
+
+            hls.loadSource(url);
+            hls.attachMedia(videoElement);
+
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                videoElement.play().catch(() => { });
+                setTimeout(() => {
+                    setCameraLoadingStates(prev => ({ ...prev, [cameraId]: false }));
+                }, 10000);
+            });
+
+            hls.on(Hls.Events.ERROR, (_event, data) => {
+                if (data.fatal) {
+                    setCameraLoadingStates(prev => ({ ...prev, [cameraId]: false }));
+                }
+            });
+
+            cameraRefs.current[cameraId].hls = hls;
+        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+            videoElement.src = url;
+            videoElement.addEventListener('loadedmetadata', () => {
+                videoElement.play().catch(() => { });
+                setTimeout(() => {
+                    setCameraLoadingStates(prev => ({ ...prev, [cameraId]: false }));
+                }, 10000);
+            });
+        }
     };
 
     const handleStudentSave = async (e: React.FormEvent) => {
@@ -396,6 +481,55 @@ const TeacherDashboard: React.FC = () => {
                     </div>
                 )}
 
+                {/* Cameras Tab */}
+                {activeTab === 'cameras' && (
+                    <div className="space-y-4">
+                        <h2 className="text-xl font-bold text-gray-900">Câmeras da Escola</h2>
+
+                        {camerasLoading ? (
+                            <div className="flex justify-center py-12">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {cameras.map((camera) => (
+                                    <div key={camera.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                        <div className="relative aspect-video bg-black">
+                                            {cameraLoadingStates[camera.id] && (
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
+                                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+                                                </div>
+                                            )}
+                                            <video
+                                                ref={(el) => {
+                                                    if (el && !cameraRefs.current[camera.id]) {
+                                                        initializeCamera(camera.id, camera.url_m3u8, el);
+                                                    }
+                                                }}
+                                                className="w-full h-full object-cover"
+                                                playsInline
+                                                muted
+                                                autoPlay
+                                            />
+                                        </div>
+                                        <div className="p-4">
+                                            <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                                                <Camera size={20} className="text-blue-500" />
+                                                {camera.nome}
+                                            </h3>
+                                        </div>
+                                    </div>
+                                ))}
+                                {cameras.length === 0 && (
+                                    <div className="col-span-full text-center py-12 text-gray-500 bg-white rounded-2xl border border-dashed">
+                                        Nenhuma câmera disponível.
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Busca Segura Tab */}
                 {activeTab === 'busca-segura' && (
                     <div className="space-y-4">
@@ -404,9 +538,9 @@ const TeacherDashboard: React.FC = () => {
                             {buscaSeguraRequests.map((req) => (
                                 <div key={req.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 relative overflow-hidden">
                                     <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-xs font-bold uppercase tracking-wider ${req.status === 'pendente' ? 'bg-yellow-100 text-yellow-700' :
-                                            req.status === 'aprovada' ? 'bg-green-100 text-green-700' :
-                                                req.status === 'rejeitada' ? 'bg-red-100 text-red-700' :
-                                                    'bg-gray-100 text-gray-700'
+                                        req.status === 'aprovada' ? 'bg-green-100 text-green-700' :
+                                            req.status === 'rejeitada' ? 'bg-red-100 text-red-700' :
+                                                'bg-gray-100 text-gray-700'
                                         }`}>
                                         {req.status}
                                     </div>
@@ -416,13 +550,6 @@ const TeacherDashboard: React.FC = () => {
                                             <h3 className="font-bold text-gray-900">{req.nome_buscador}</h3>
                                             <p className="text-xs text-gray-500">Doc: {req.doc_buscador}</p>
                                         </div>
-                                    </div>
-                                    <div className="bg-gray-50 rounded-xl p-3 mb-2">
-                                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Buscando Aluno</p>
-                                        <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                                            <UserIcon size={16} className="text-blue-500" />
-                                            {req.aluno?.nome || 'Não identificado'}
-                                        </p>
                                     </div>
                                     <p className="text-xs text-gray-400 text-right">
                                         {new Date(req.criado_em).toLocaleString('pt-BR')}
@@ -463,19 +590,23 @@ const TeacherDashboard: React.FC = () => {
             {/* Bottom Navigation Bar (Mobile Only) */}
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg md:hidden z-30">
                 <div className="flex justify-around items-center py-2">
-                    <button onClick={() => setActiveTab('students')} className={`flex flex-col items-center gap-1 px-4 py-2 transition-colors ${activeTab === 'students' ? 'text-blue-600' : 'text-gray-500'}`}>
+                    <button onClick={() => setActiveTab('students')} className={`flex flex-col items-center gap-1 px-3 py-2 transition-colors ${activeTab === 'students' ? 'text-blue-600' : 'text-gray-500'}`}>
                         <UserIcon size={24} weight={activeTab === 'students' ? 'fill' : 'regular'} />
                         <span className="text-xs font-medium">Alunos</span>
                     </button>
-                    <button onClick={() => setActiveTab('messages')} className={`flex flex-col items-center gap-1 px-4 py-2 transition-colors ${activeTab === 'messages' ? 'text-blue-600' : 'text-gray-500'}`}>
+                    <button onClick={() => setActiveTab('messages')} className={`flex flex-col items-center gap-1 px-3 py-2 transition-colors ${activeTab === 'messages' ? 'text-blue-600' : 'text-gray-500'}`}>
                         <ChatCircle size={24} weight={activeTab === 'messages' ? 'fill' : 'regular'} />
                         <span className="text-xs font-medium">Mensagens</span>
                     </button>
-                    <button onClick={() => setActiveTab('busca-segura')} className={`flex flex-col items-center gap-1 px-4 py-2 transition-colors ${activeTab === 'busca-segura' ? 'text-blue-600' : 'text-gray-500'}`}>
+                    <button onClick={() => setActiveTab('cameras')} className={`flex flex-col items-center gap-1 px-3 py-2 transition-colors ${activeTab === 'cameras' ? 'text-blue-600' : 'text-gray-500'}`}>
+                        <Camera size={24} weight={activeTab === 'cameras' ? 'fill' : 'regular'} />
+                        <span className="text-xs font-medium">Câmeras</span>
+                    </button>
+                    <button onClick={() => setActiveTab('busca-segura')} className={`flex flex-col items-center gap-1 px-3 py-2 transition-colors ${activeTab === 'busca-segura' ? 'text-blue-600' : 'text-gray-500'}`}>
                         <ShieldCheck size={24} weight={activeTab === 'busca-segura' ? 'fill' : 'regular'} />
                         <span className="text-xs font-medium">Busca</span>
                     </button>
-                    <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-1 px-4 py-2 transition-colors ${activeTab === 'profile' ? 'text-blue-600' : 'text-gray-500'}`}>
+                    <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-1 px-3 py-2 transition-colors ${activeTab === 'profile' ? 'text-blue-600' : 'text-gray-500'}`}>
                         <UserIcon size={24} weight={activeTab === 'profile' ? 'fill' : 'regular'} />
                         <span className="text-xs font-medium">Perfil</span>
                     </button>
