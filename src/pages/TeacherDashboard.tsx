@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Camera, User as UserIcon, ChatCircle, ShieldCheck, SignOut, X, Plus, Pencil, Trash, Upload, Play, Stop } from 'phosphor-react';
+import { User as UserIcon, ChatCircle, ShieldCheck, SignOut, X, Plus, Pencil, Trash, Play, Stop } from 'phosphor-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
@@ -66,7 +66,6 @@ const TeacherDashboard: React.FC = () => {
 
     // Profile State
     const [editingName, setEditingName] = useState('');
-    const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
