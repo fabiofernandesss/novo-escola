@@ -280,50 +280,17 @@ const TeacherDashboard: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
-            {/* Mobile Header */}
-            <div className="bg-white shadow-sm p-4 sticky top-0 z-20 flex justify-between items-center md:hidden">
-                <div>
-                    <h1 className="text-lg font-bold text-gray-900">Olá, {currentUser?.nome?.split(' ')[0]}</h1>
-                    <p className="text-xs text-gray-500">Painel do Professor</p>
-                </div>
-                <button onClick={handleLogout} className="p-2 text-gray-600 hover:bg-gray-100 rounded-full">
-                    <SignOut size={24} />
-                </button>
-            </div>
-
-            {/* Desktop Header */}
-            <div className="hidden md:block bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white p-6 shadow-lg">
+        <div className="min-h-screen bg-gray-50 pb-20">
+            {/* Header with Gradient (Mobile & Desktop) */}
+            <div className="bg-gradient-to-r from-blue-500 to-emerald-500 text-white p-4 md:p-6 shadow-lg">
                 <div className="max-w-7xl mx-auto flex justify-between items-center">
                     <div>
-                        <h1 className="text-2xl font-bold">Olá, {currentUser?.nome?.split(' ')[0]}!</h1>
-                        <p className="text-blue-100 text-sm">Painel do Professor</p>
+                        <h1 className="text-xl md:text-2xl font-bold">Olá, {currentUser?.nome?.split(' ')[0]}!</h1>
+                        <p className="text-blue-100 text-xs md:text-sm">Painel do Professor</p>
                     </div>
-                    <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl transition-colors">
+                    <button onClick={handleLogout} className="p-2 md:px-4 md:py-2 bg-white/20 hover:bg-white/30 rounded-full md:rounded-xl transition-colors flex items-center gap-2">
                         <SignOut size={20} />
-                        <span className="font-medium">Sair</span>
-                    </button>
-                </div>
-            </div>
-
-            {/* Navigation Tabs (Scrollable on Mobile) */}
-            <div className="bg-white border-b sticky top-[60px] md:top-0 z-10 overflow-x-auto no-scrollbar">
-                <div className="max-w-7xl mx-auto flex md:justify-start px-4 md:px-6 min-w-max">
-                    <button onClick={() => setActiveTab('students')} className={`flex-1 md:flex-none px-4 py-3 font-medium transition-colors border-b-2 flex items-center justify-center gap-2 ${activeTab === 'students' ? 'border-[hsl(var(--brand-blue))] text-[hsl(var(--brand-blue))]' : 'border-transparent text-gray-600'}`}>
-                        <UserIcon size={20} />
-                        <span>Alunos</span>
-                    </button>
-                    <button onClick={() => setActiveTab('messages')} className={`flex-1 md:flex-none px-4 py-3 font-medium transition-colors border-b-2 flex items-center justify-center gap-2 ${activeTab === 'messages' ? 'border-[hsl(var(--brand-blue))] text-[hsl(var(--brand-blue))]' : 'border-transparent text-gray-600'}`}>
-                        <ChatCircle size={20} />
-                        <span>Mensagens</span>
-                    </button>
-                    <button onClick={() => setActiveTab('busca-segura')} className={`flex-1 md:flex-none px-4 py-3 font-medium transition-colors border-b-2 flex items-center justify-center gap-2 ${activeTab === 'busca-segura' ? 'border-[hsl(var(--brand-blue))] text-[hsl(var(--brand-blue))]' : 'border-transparent text-gray-600'}`}>
-                        <ShieldCheck size={20} />
-                        <span>Busca Segura</span>
-                    </button>
-                    <button onClick={() => setActiveTab('profile')} className={`flex-1 md:flex-none px-4 py-3 font-medium transition-colors border-b-2 flex items-center justify-center gap-2 ${activeTab === 'profile' ? 'border-[hsl(var(--brand-blue))] text-[hsl(var(--brand-blue))]' : 'border-transparent text-gray-600'}`}>
-                        <UserIcon size={20} />
-                        <span>Perfil</span>
+                        <span className="hidden md:inline font-medium">Sair</span>
                     </button>
                 </div>
             </div>
@@ -334,7 +301,7 @@ const TeacherDashboard: React.FC = () => {
                 {/* Students Tab */}
                 {activeTab === 'students' && (
                     <div className="space-y-4">
-                        <div className="flex justify-between items-center sticky top-[115px] md:static z-10 bg-gray-50 py-2 md:py-0">
+                        <div className="flex justify-between items-center">
                             <h2 className="text-xl font-bold text-gray-900">Alunos ({students.length})</h2>
                             <button onClick={() => { setEditingStudent(null); setStudentFormData({}); setIsStudentModalOpen(true); }} className="bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 hover:bg-blue-700 active:scale-95 transition-all">
                                 <Plus size={20} weight="bold" />
@@ -391,7 +358,7 @@ const TeacherDashboard: React.FC = () => {
                 {/* Messages Tab */}
                 {activeTab === 'messages' && (
                     <div className="space-y-4">
-                        <div className="flex justify-between items-center sticky top-[115px] md:static z-10 bg-gray-50 py-2 md:py-0">
+                        <div className="flex justify-between items-center">
                             <h2 className="text-xl font-bold text-gray-900">Mensagens</h2>
                             <button onClick={() => setIsMessageModalOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 hover:bg-blue-700 active:scale-95 transition-all">
                                 <Plus size={20} weight="bold" />
@@ -432,14 +399,14 @@ const TeacherDashboard: React.FC = () => {
                 {/* Busca Segura Tab */}
                 {activeTab === 'busca-segura' && (
                     <div className="space-y-4">
-                        <h2 className="text-xl font-bold text-gray-900 sticky top-[115px] md:static z-10 bg-gray-50 py-2 md:py-0">Solicitações de Busca</h2>
+                        <h2 className="text-xl font-bold text-gray-900">Solicitações de Busca</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {buscaSeguraRequests.map((req) => (
                                 <div key={req.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 relative overflow-hidden">
                                     <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-xs font-bold uppercase tracking-wider ${req.status === 'pendente' ? 'bg-yellow-100 text-yellow-700' :
-                                        req.status === 'aprovada' ? 'bg-green-100 text-green-700' :
-                                            req.status === 'rejeitada' ? 'bg-red-100 text-red-700' :
-                                                'bg-gray-100 text-gray-700'
+                                            req.status === 'aprovada' ? 'bg-green-100 text-green-700' :
+                                                req.status === 'rejeitada' ? 'bg-red-100 text-red-700' :
+                                                    'bg-gray-100 text-gray-700'
                                         }`}>
                                         {req.status}
                                     </div>
@@ -491,6 +458,28 @@ const TeacherDashboard: React.FC = () => {
                         </div>
                     </div>
                 )}
+            </div>
+
+            {/* Bottom Navigation Bar (Mobile Only) */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg md:hidden z-30">
+                <div className="flex justify-around items-center py-2">
+                    <button onClick={() => setActiveTab('students')} className={`flex flex-col items-center gap-1 px-4 py-2 transition-colors ${activeTab === 'students' ? 'text-blue-600' : 'text-gray-500'}`}>
+                        <UserIcon size={24} weight={activeTab === 'students' ? 'fill' : 'regular'} />
+                        <span className="text-xs font-medium">Alunos</span>
+                    </button>
+                    <button onClick={() => setActiveTab('messages')} className={`flex flex-col items-center gap-1 px-4 py-2 transition-colors ${activeTab === 'messages' ? 'text-blue-600' : 'text-gray-500'}`}>
+                        <ChatCircle size={24} weight={activeTab === 'messages' ? 'fill' : 'regular'} />
+                        <span className="text-xs font-medium">Mensagens</span>
+                    </button>
+                    <button onClick={() => setActiveTab('busca-segura')} className={`flex flex-col items-center gap-1 px-4 py-2 transition-colors ${activeTab === 'busca-segura' ? 'text-blue-600' : 'text-gray-500'}`}>
+                        <ShieldCheck size={24} weight={activeTab === 'busca-segura' ? 'fill' : 'regular'} />
+                        <span className="text-xs font-medium">Busca</span>
+                    </button>
+                    <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-1 px-4 py-2 transition-colors ${activeTab === 'profile' ? 'text-blue-600' : 'text-gray-500'}`}>
+                        <UserIcon size={24} weight={activeTab === 'profile' ? 'fill' : 'regular'} />
+                        <span className="text-xs font-medium">Perfil</span>
+                    </button>
+                </div>
             </div>
 
             {/* Student Modal */}
