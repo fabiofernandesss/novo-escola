@@ -178,8 +178,7 @@ const TeacherDashboard: React.FC = () => {
         const { data: camerasData } = await supabase
             .from('cameras')
             .select('*')
-            .eq('escola_id', escolaId)
-            .eq('ativo', true);
+            .eq('escola_id', escolaId);
 
         setCameras(camerasData || []);
         setCamerasLoading(false);
@@ -194,11 +193,27 @@ const TeacherDashboard: React.FC = () => {
 
     const fetchBuscaSegura = async () => {
         if (!escolaId) return;
+
+        // Primeiro buscar os IDs dos alunos da escola
+        const { data: alunosData } = await supabase
+            .from('alunos')
+            .select('id')
+            .eq('escola_id', escolaId);
+
+        if (!alunosData || alunosData.length === 0) {
+            setBuscaSeguraRequests([]);
+            return;
+        }
+
+        const alunoIds = alunosData.map(a => a.id);
+
+        // Buscar solicitações de busca segura para esses alunos
         const { data } = await supabase
             .from('busca_segura')
             .select('*')
-            .eq('escola_id', escolaId)
+            .in('aluno_id', alunoIds)
             .order('criado_em', { ascending: false });
+
         setBuscaSeguraRequests(data || []);
     };
 
