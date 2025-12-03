@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { User as UserIcon, ChatCircle, ShieldCheck, SignOut, X, Plus, Pencil, Trash, Play, Stop } from 'phosphor-react';
+import { User as UserIcon, ChatCircle, ShieldCheck, SignOut, X, Plus, Pencil, Trash, Play, Stop, CaretRight, Phone, IdentificationCard } from 'phosphor-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
@@ -273,16 +273,27 @@ const TeacherDashboard: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[hsl(var(--brand-blue))]"></div>
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white p-6 shadow-lg">
+        <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
+            {/* Mobile Header */}
+            <div className="bg-white shadow-sm p-4 sticky top-0 z-20 flex justify-between items-center md:hidden">
+                <div>
+                    <h1 className="text-lg font-bold text-gray-900">Olá, {currentUser?.nome?.split(' ')[0]}</h1>
+                    <p className="text-xs text-gray-500">Painel do Professor</p>
+                </div>
+                <button onClick={handleLogout} className="p-2 text-gray-600 hover:bg-gray-100 rounded-full">
+                    <SignOut size={24} />
+                </button>
+            </div>
+
+            {/* Desktop Header */}
+            <div className="hidden md:block bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white p-6 shadow-lg">
                 <div className="max-w-7xl mx-auto flex justify-between items-center">
                     <div>
                         <h1 className="text-2xl font-bold">Olá, {currentUser?.nome?.split(' ')[0]}!</h1>
@@ -295,147 +306,186 @@ const TeacherDashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Navigation */}
-            <div className="bg-white border-b sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto flex gap-4 px-6">
-                    <button onClick={() => setActiveTab('students')} className={`px-4 py-3 font-medium transition-colors border-b-2 ${activeTab === 'students' ? 'border-[hsl(var(--brand-blue))] text-[hsl(var(--brand-blue))]' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
-                        <UserIcon size={20} className="inline mr-2" />Alunos
+            {/* Navigation Tabs (Scrollable on Mobile) */}
+            <div className="bg-white border-b sticky top-[60px] md:top-0 z-10 overflow-x-auto no-scrollbar">
+                <div className="max-w-7xl mx-auto flex md:justify-start px-4 md:px-6 min-w-max">
+                    <button onClick={() => setActiveTab('students')} className={`flex-1 md:flex-none px-4 py-3 font-medium transition-colors border-b-2 flex items-center justify-center gap-2 ${activeTab === 'students' ? 'border-[hsl(var(--brand-blue))] text-[hsl(var(--brand-blue))]' : 'border-transparent text-gray-600'}`}>
+                        <UserIcon size={20} />
+                        <span>Alunos</span>
                     </button>
-                    <button onClick={() => setActiveTab('messages')} className={`px-4 py-3 font-medium transition-colors border-b-2 ${activeTab === 'messages' ? 'border-[hsl(var(--brand-blue))] text-[hsl(var(--brand-blue))]' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
-                        <ChatCircle size={20} className="inline mr-2" />Mensagens
+                    <button onClick={() => setActiveTab('messages')} className={`flex-1 md:flex-none px-4 py-3 font-medium transition-colors border-b-2 flex items-center justify-center gap-2 ${activeTab === 'messages' ? 'border-[hsl(var(--brand-blue))] text-[hsl(var(--brand-blue))]' : 'border-transparent text-gray-600'}`}>
+                        <ChatCircle size={20} />
+                        <span>Mensagens</span>
                     </button>
-                    <button onClick={() => setActiveTab('busca-segura')} className={`px-4 py-3 font-medium transition-colors border-b-2 ${activeTab === 'busca-segura' ? 'border-[hsl(var(--brand-blue))] text-[hsl(var(--brand-blue))]' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
-                        <ShieldCheck size={20} className="inline mr-2" />Busca Segura
+                    <button onClick={() => setActiveTab('busca-segura')} className={`flex-1 md:flex-none px-4 py-3 font-medium transition-colors border-b-2 flex items-center justify-center gap-2 ${activeTab === 'busca-segura' ? 'border-[hsl(var(--brand-blue))] text-[hsl(var(--brand-blue))]' : 'border-transparent text-gray-600'}`}>
+                        <ShieldCheck size={20} />
+                        <span>Busca Segura</span>
                     </button>
-                    <button onClick={() => setActiveTab('profile')} className={`px-4 py-3 font-medium transition-colors border-b-2 ${activeTab === 'profile' ? 'border-[hsl(var(--brand-blue))] text-[hsl(var(--brand-blue))]' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
-                        <UserIcon size={20} className="inline mr-2" />Perfil
+                    <button onClick={() => setActiveTab('profile')} className={`flex-1 md:flex-none px-4 py-3 font-medium transition-colors border-b-2 flex items-center justify-center gap-2 ${activeTab === 'profile' ? 'border-[hsl(var(--brand-blue))] text-[hsl(var(--brand-blue))]' : 'border-transparent text-gray-600'}`}>
+                        <UserIcon size={20} />
+                        <span>Perfil</span>
                     </button>
                 </div>
             </div>
 
             {/* Content */}
-            <div className="max-w-7xl mx-auto p-6">
+            <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+
+                {/* Students Tab */}
                 {activeTab === 'students' && (
-                    <div>
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-gray-900">Gerenciar Alunos</h2>
-                            <button onClick={() => { setEditingStudent(null); setStudentFormData({}); setIsStudentModalOpen(true); }} className="bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:shadow-lg font-semibold">
-                                <Plus size={20} weight="bold" />Novo Aluno
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center sticky top-[115px] md:static z-10 bg-gray-50 py-2 md:py-0">
+                            <h2 className="text-xl font-bold text-gray-900">Alunos ({students.length})</h2>
+                            <button onClick={() => { setEditingStudent(null); setStudentFormData({}); setIsStudentModalOpen(true); }} className="bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 hover:bg-blue-700 active:scale-95 transition-all">
+                                <Plus size={20} weight="bold" />
+                                <span className="hidden md:inline">Novo Aluno</span>
                             </button>
                         </div>
 
-                        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                            <table className="w-full text-sm">
-                                <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b">
-                                    <tr>
-                                        <th className="p-4 font-semibold text-gray-700 text-left">Nome</th>
-                                        <th className="p-4 font-semibold text-gray-700 text-left">Matrícula</th>
-                                        <th className="p-4 font-semibold text-gray-700 text-left">Responsável</th>
-                                        <th className="p-4 font-semibold text-gray-700 text-right">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y">
-                                    {students.length === 0 ? (
-                                        <tr><td colSpan={4} className="p-8 text-center text-gray-500">Nenhum aluno encontrado</td></tr>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {students.map((student) => (
+                                <div key={student.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-start gap-4">
+                                    {student.foto_url ? (
+                                        <img src={student.foto_url} alt={student.nome} className="w-16 h-16 rounded-full object-cover border-2 border-gray-100" />
                                     ) : (
-                                        students.map((student) => (
-                                            <tr key={student.id} className="hover:bg-gray-50">
-                                                <td className="p-4">
-                                                    <div className="flex items-center gap-3">
-                                                        {student.foto_url ? (
-                                                            <img src={student.foto_url} alt={student.nome} className="w-10 h-10 rounded-full object-cover" />
-                                                        ) : (
-                                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] flex items-center justify-center text-white font-bold">
-                                                                {student.nome.charAt(0).toUpperCase()}
-                                                            </div>
-                                                        )}
-                                                        <span className="font-medium text-gray-900">{student.nome}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="p-4 text-gray-600">{student.matricula || '-'}</td>
-                                                <td className="p-4 text-gray-600">{student.nome_responsavel_1 || '-'}</td>
-                                                <td className="p-4 text-right">
-                                                    <div className="flex gap-2 justify-end">
-                                                        <button onClick={() => { setEditingStudent(student); setStudentFormData(student); setIsStudentModalOpen(true); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Pencil size={18} /></button>
-                                                        <button onClick={() => handleStudentDelete(student.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash size={18} /></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
+                                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center text-blue-600 font-bold text-xl border-2 border-white shadow-sm">
+                                            {student.nome.charAt(0).toUpperCase()}
+                                        </div>
                                     )}
-                                </tbody>
-                            </table>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-bold text-gray-900 truncate">{student.nome}</h3>
+                                        <p className="text-sm text-gray-500 flex items-center gap-1">
+                                            <IdentificationCard size={14} />
+                                            Matrícula: {student.matricula || '-'}
+                                        </p>
+                                        <p className="text-sm text-gray-500 flex items-center gap-1">
+                                            <UserIcon size={14} />
+                                            Resp: {student.nome_responsavel_1?.split(' ')[0] || '-'}
+                                        </p>
+                                        {student.telefone_responsavel_1 && (
+                                            <p className="text-sm text-gray-500 flex items-center gap-1">
+                                                <Phone size={14} />
+                                                {student.telefone_responsavel_1}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <button onClick={() => { setEditingStudent(student); setStudentFormData(student); setIsStudentModalOpen(true); }} className="p-2 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
+                                            <Pencil size={18} />
+                                        </button>
+                                        <button onClick={() => handleStudentDelete(student.id)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100">
+                                            <Trash size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                            {students.length === 0 && (
+                                <div className="col-span-full text-center py-12 text-gray-500 bg-white rounded-2xl border border-dashed">
+                                    Nenhum aluno cadastrado.
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
 
+                {/* Messages Tab */}
                 {activeTab === 'messages' && (
-                    <div>
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-gray-900">Mensagens</h2>
-                            <button onClick={() => setIsMessageModalOpen(true)} className="bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:shadow-lg font-semibold">
-                                <Plus size={20} weight="bold" />Nova Mensagem
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center sticky top-[115px] md:static z-10 bg-gray-50 py-2 md:py-0">
+                            <h2 className="text-xl font-bold text-gray-900">Mensagens</h2>
+                            <button onClick={() => setIsMessageModalOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 hover:bg-blue-700 active:scale-95 transition-all">
+                                <Plus size={20} weight="bold" />
+                                <span className="hidden md:inline">Nova Mensagem</span>
                             </button>
                         </div>
 
-                        <div className="space-y-4">
-                            {messages.length === 0 ? (
-                                <div className="bg-white rounded-xl shadow-sm border p-8 text-center text-gray-500">Nenhuma mensagem encontrada</div>
-                            ) : (
-                                messages.map((msg) => (
-                                    <div key={msg.id} className="bg-white rounded-xl shadow-sm border p-4">
-                                        <h3 className="font-bold text-gray-900">{msg.titulo}</h3>
-                                        <p className="text-gray-600 text-sm mt-1">{msg.descricao}</p>
-                                        {msg.media_url && (
-                                            <div className="mt-2">
-                                                {msg.tipo?.includes('image') && <img src={msg.media_url} alt="" className="rounded-lg max-h-64" />}
-                                                {msg.tipo?.includes('video') && <video src={msg.media_url} controls className="rounded-lg max-h-64" />}
-                                            </div>
-                                        )}
-                                        <p className="text-xs text-gray-400 mt-2">{new Date(msg.published_at).toLocaleString('pt-BR')}</p>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {activeTab === 'busca-segura' && (
-                    <div>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-6">Busca Segura</h2>
-                        <div className="space-y-4">
-                            {buscaSeguraRequests.length === 0 ? (
-                                <div className="bg-white rounded-xl shadow-sm border p-8 text-center text-gray-500">Nenhuma solicitação encontrada</div>
-                            ) : (
-                                buscaSeguraRequests.map((req) => (
-                                    <div key={req.id} className="bg-white rounded-xl shadow-sm border p-4">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="font-bold text-gray-900">{req.nome_buscador}</h3>
-                                                <p className="text-sm text-gray-600">Documento: {req.doc_buscador}</p>
-                                                <p className="text-sm text-gray-600">Aluno: {req.aluno?.nome || '-'}</p>
-                                            </div>
-                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${req.status === 'pendente' ? 'bg-yellow-100 text-yellow-700' : req.status === 'aprovada' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                {req.status}
-                                            </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {messages.map((msg) => (
+                                <div key={msg.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+                                    {msg.media_url && (
+                                        <div className="aspect-video bg-black relative">
+                                            {msg.tipo?.includes('image') ? (
+                                                <img src={msg.media_url} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <video src={msg.media_url} controls className="w-full h-full object-contain" />
+                                            )}
                                         </div>
-                                        <p className="text-xs text-gray-400 mt-2">{new Date(req.criado_em).toLocaleString('pt-BR')}</p>
+                                    )}
+                                    <div className="p-4 flex-1 flex flex-col">
+                                        <h3 className="font-bold text-gray-900 mb-1">{msg.titulo}</h3>
+                                        <p className="text-sm text-gray-600 line-clamp-3 mb-3 flex-1">{msg.descricao}</p>
+                                        <p className="text-xs text-gray-400 mt-auto pt-2 border-t">
+                                            {new Date(msg.published_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                        </p>
                                     </div>
-                                ))
+                                </div>
+                            ))}
+                            {messages.length === 0 && (
+                                <div className="col-span-full text-center py-12 text-gray-500 bg-white rounded-2xl border border-dashed">
+                                    Nenhuma mensagem enviada.
+                                </div>
                             )}
                         </div>
                     </div>
                 )}
 
+                {/* Busca Segura Tab */}
+                {activeTab === 'busca-segura' && (
+                    <div className="space-y-4">
+                        <h2 className="text-xl font-bold text-gray-900 sticky top-[115px] md:static z-10 bg-gray-50 py-2 md:py-0">Solicitações de Busca</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {buscaSeguraRequests.map((req) => (
+                                <div key={req.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 relative overflow-hidden">
+                                    <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-xs font-bold uppercase tracking-wider ${req.status === 'pendente' ? 'bg-yellow-100 text-yellow-700' :
+                                            req.status === 'aprovada' ? 'bg-green-100 text-green-700' :
+                                                req.status === 'rejeitada' ? 'bg-red-100 text-red-700' :
+                                                    'bg-gray-100 text-gray-700'
+                                        }`}>
+                                        {req.status}
+                                    </div>
+                                    <div className="flex items-center gap-4 mb-3">
+                                        <img src={req.foto_buscador_url} alt={req.nome_buscador} className="w-14 h-14 rounded-full object-cover border-2 border-gray-100" />
+                                        <div>
+                                            <h3 className="font-bold text-gray-900">{req.nome_buscador}</h3>
+                                            <p className="text-xs text-gray-500">Doc: {req.doc_buscador}</p>
+                                        </div>
+                                    </div>
+                                    <div className="bg-gray-50 rounded-xl p-3 mb-2">
+                                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Buscando Aluno</p>
+                                        <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                                            <UserIcon size={16} className="text-blue-500" />
+                                            {req.aluno?.nome || 'Não identificado'}
+                                        </p>
+                                    </div>
+                                    <p className="text-xs text-gray-400 text-right">
+                                        {new Date(req.criado_em).toLocaleString('pt-BR')}
+                                    </p>
+                                </div>
+                            ))}
+                            {buscaSeguraRequests.length === 0 && (
+                                <div className="col-span-full text-center py-12 text-gray-500 bg-white rounded-2xl border border-dashed">
+                                    Nenhuma solicitação encontrada.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Profile Tab */}
                 {activeTab === 'profile' && (
-                    <div className="bg-white rounded-xl shadow-sm border p-6 max-w-2xl">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-6">Editar Perfil</h2>
+                    <div className="max-w-md mx-auto bg-white rounded-2xl shadow-sm border p-6">
+                        <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">Editar Perfil</h2>
                         <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-                                <input type="text" value={editingName} onChange={(e) => setEditingName(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none" />
+                            <div className="flex justify-center mb-6">
+                                <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-3xl font-bold">
+                                    {currentUser?.nome?.charAt(0).toUpperCase()}
+                                </div>
                             </div>
-                            <button onClick={handleProfileUpdate} className="bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
+                                <input type="text" value={editingName} onChange={(e) => setEditingName(e.target.value)} className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50" />
+                            </div>
+                            <button onClick={handleProfileUpdate} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
                                 Salvar Alterações
                             </button>
                         </div>
@@ -446,32 +496,37 @@ const TeacherDashboard: React.FC = () => {
             {/* Student Modal */}
             <AnimatePresence>
                 {isStudentModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                            <div className="p-6 border-b flex justify-between items-center">
-                                <h2 className="text-2xl font-bold text-gray-900">{editingStudent ? 'Editar Aluno' : 'Novo Aluno'}</h2>
-                                <button onClick={() => setIsStudentModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={24} /></button>
+                    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4">
+                        <motion.div
+                            initial={{ y: "100%" }}
+                            animate={{ y: 0 }}
+                            exit={{ y: "100%" }}
+                            transition={{ type: "spring", damping: 25, stiffness: 500 }}
+                            className="bg-white w-full md:max-w-lg rounded-t-3xl md:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
+                        >
+                            <div className="p-4 border-b flex justify-between items-center sticky top-0 bg-white z-10">
+                                <h2 className="text-lg font-bold text-gray-900">{editingStudent ? 'Editar Aluno' : 'Novo Aluno'}</h2>
+                                <button onClick={() => setIsStudentModalOpen(false)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200"><X size={20} /></button>
                             </div>
                             <form onSubmit={handleStudentSave} className="p-6 space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
-                                    <input type="text" required value={studentFormData.nome || ''} onChange={(e) => setStudentFormData({ ...studentFormData, nome: e.target.value })} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none" />
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Aluno *</label>
+                                    <input type="text" required value={studentFormData.nome || ''} onChange={(e) => setStudentFormData({ ...studentFormData, nome: e.target.value })} className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50" placeholder="Ex: João Silva" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Matrícula</label>
-                                    <input type="text" value={studentFormData.matricula || ''} onChange={(e) => setStudentFormData({ ...studentFormData, matricula: e.target.value })} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none" />
+                                    <input type="text" value={studentFormData.matricula || ''} onChange={(e) => setStudentFormData({ ...studentFormData, matricula: e.target.value })} className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50" placeholder="Ex: 2023001" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
-                                    <input type="text" value={studentFormData.nome_responsavel_1 || ''} onChange={(e) => setStudentFormData({ ...studentFormData, nome_responsavel_1: e.target.value })} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none" />
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Responsável</label>
+                                    <input type="text" value={studentFormData.nome_responsavel_1 || ''} onChange={(e) => setStudentFormData({ ...studentFormData, nome_responsavel_1: e.target.value })} className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50" placeholder="Ex: Maria Silva" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Telefone Responsável</label>
-                                    <input type="text" value={studentFormData.telefone_responsavel_1 || ''} onChange={(e) => setStudentFormData({ ...studentFormData, telefone_responsavel_1: e.target.value })} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none" />
+                                    <input type="tel" value={studentFormData.telefone_responsavel_1 || ''} onChange={(e) => setStudentFormData({ ...studentFormData, telefone_responsavel_1: e.target.value })} className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50" placeholder="(00) 00000-0000" />
                                 </div>
-                                <div className="flex gap-3 pt-4">
-                                    <button type="button" onClick={() => setIsStudentModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
-                                    <button type="submit" className="flex-1 bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg">Salvar</button>
+                                <div className="pt-4">
+                                    <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">Salvar Aluno</button>
                                 </div>
                             </form>
                         </motion.div>
@@ -482,45 +537,73 @@ const TeacherDashboard: React.FC = () => {
             {/* Message Modal */}
             <AnimatePresence>
                 {isMessageModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                            <div className="p-6 border-b flex justify-between items-center">
-                                <h2 className="text-2xl font-bold text-gray-900">Nova Mensagem</h2>
-                                <button onClick={() => setIsMessageModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={24} /></button>
+                    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4">
+                        <motion.div
+                            initial={{ y: "100%" }}
+                            animate={{ y: 0 }}
+                            exit={{ y: "100%" }}
+                            transition={{ type: "spring", damping: 25, stiffness: 500 }}
+                            className="bg-white w-full md:max-w-lg rounded-t-3xl md:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
+                        >
+                            <div className="p-4 border-b flex justify-between items-center sticky top-0 bg-white z-10">
+                                <h2 className="text-lg font-bold text-gray-900">Nova Mensagem</h2>
+                                <button onClick={() => setIsMessageModalOpen(false)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200"><X size={20} /></button>
                             </div>
                             <form onSubmit={handleMessageSave} className="p-6 space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Título *</label>
-                                    <input type="text" required value={messageFormData.titulo} onChange={(e) => setMessageFormData({ ...messageFormData, titulo: e.target.value })} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none" />
+                                    <input type="text" required value={messageFormData.titulo} onChange={(e) => setMessageFormData({ ...messageFormData, titulo: e.target.value })} className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50" placeholder="Ex: Reunião de Pais" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Descrição *</label>
-                                    <textarea required value={messageFormData.descricao} onChange={(e) => setMessageFormData({ ...messageFormData, descricao: e.target.value })} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[hsl(var(--brand-blue))] outline-none" rows={4} />
+                                    <textarea required value={messageFormData.descricao} onChange={(e) => setMessageFormData({ ...messageFormData, descricao: e.target.value })} className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50" rows={4} placeholder="Digite o conteúdo da mensagem..." />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Mídia (Foto/Vídeo)</label>
-                                    <input type="file" accept="image/*,video/*" onChange={(e) => setMessageFormData({ ...messageFormData, media: e.target.files?.[0] || null })} className="w-full px-4 py-2 border rounded-lg" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ou Gravar Vídeo</label>
-                                    <div className="space-y-2">
-                                        {!isRecording && !videoBlob && (
-                                            <button type="button" onClick={startRecording} className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                                                <Play size={20} />Iniciar Gravação
-                                            </button>
-                                        )}
-                                        {isRecording && (
-                                            <button type="button" onClick={stopRecording} className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                                                <Stop size={20} />Parar ({recordingTime}s)
-                                            </button>
-                                        )}
-                                        <video ref={videoRef} className="w-full rounded-lg" />
-                                        {videoBlob && <p className="text-sm text-green-600">Vídeo gravado com sucesso!</p>}
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:bg-gray-50 transition-colors relative">
+                                        <input type="file" accept="image/*,video/*" onChange={(e) => setMessageFormData({ ...messageFormData, media: e.target.files?.[0] || null })} className="absolute inset-0 opacity-0 cursor-pointer" />
+                                        <div className="flex flex-col items-center gap-2 text-gray-500">
+                                            <Plus size={24} />
+                                            <span className="text-xs font-medium">Upload Mídia</span>
+                                        </div>
                                     </div>
+
+                                    <button type="button" onClick={startRecording} className="border-2 border-dashed border-red-200 bg-red-50 rounded-xl p-4 text-center hover:bg-red-100 transition-colors flex flex-col items-center gap-2 text-red-500">
+                                        <Play size={24} />
+                                        <span className="text-xs font-medium">Gravar Vídeo</span>
+                                    </button>
                                 </div>
-                                <div className="flex gap-3 pt-4">
-                                    <button type="button" onClick={() => setIsMessageModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
-                                    <button type="submit" className="flex-1 bg-gradient-to-r from-[hsl(var(--brand-blue))] to-[hsl(var(--brand-green))] text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg">Enviar</button>
+
+                                {messageFormData.media && (
+                                    <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+                                        <CheckCircle size={16} />
+                                        Arquivo selecionado: {messageFormData.media.name}
+                                    </div>
+                                )}
+
+                                {isRecording && (
+                                    <div className="fixed inset-0 z-[60] bg-black flex flex-col items-center justify-center">
+                                        <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
+                                        <div className="absolute bottom-10 flex flex-col items-center gap-4">
+                                            <div className="bg-red-600 text-white px-4 py-1 rounded-full text-sm font-mono animate-pulse">
+                                                {recordingTime}s
+                                            </div>
+                                            <button type="button" onClick={stopRecording} className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-red-600 shadow-lg hover:scale-110 transition-transform">
+                                                <Stop size={32} weight="fill" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {videoBlob && (
+                                    <div className="bg-green-50 text-green-700 px-4 py-3 rounded-xl text-sm flex items-center justify-between">
+                                        <span className="flex items-center gap-2 font-medium"><Play size={16} /> Vídeo gravado!</span>
+                                        <button type="button" onClick={() => setVideoBlob(null)} className="text-red-500 hover:text-red-700"><Trash size={18} /></button>
+                                    </div>
+                                )}
+
+                                <div className="pt-4">
+                                    <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">Enviar Mensagem</button>
                                 </div>
                             </form>
                         </motion.div>
@@ -530,5 +613,13 @@ const TeacherDashboard: React.FC = () => {
         </div>
     );
 };
+
+// Helper Icon
+const CheckCircle = ({ size }: { size: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
+);
 
 export default TeacherDashboard;
