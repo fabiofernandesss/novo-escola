@@ -223,13 +223,23 @@ const TeacherDashboard: React.FC = () => {
         cameraRefs.current[cameraId] = { video: videoElement, hls: null };
 
         if (Hls.isSupported()) {
+            // Use proxy if running on HTTPS and trying to access HTTP camera
+            let src = url;
+            if (window.location.protocol === 'https:' && src.includes('http://78.46.228.35')) {
+                if (src.includes(':8001')) {
+                    src = src.replace('http://78.46.228.35:8001', '/camera-proxy-8001');
+                } else if (src.includes(':8002')) {
+                    src = src.replace('http://78.46.228.35:8002', '/camera-proxy-8002');
+                }
+            }
+
             const hls = new Hls({
                 enableWorker: true,
                 lowLatencyMode: true,
                 backBufferLength: 90,
             });
 
-            hls.loadSource(url);
+            hls.loadSource(src);
             hls.attachMedia(videoElement);
 
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -382,15 +392,40 @@ const TeacherDashboard: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
             {/* Header with Gradient (Mobile & Desktop) */}
-            <div className="bg-gradient-to-r from-blue-500 to-emerald-500 text-white p-4 md:p-6 shadow-lg">
-                <div className="max-w-7xl mx-auto flex justify-between items-center">
-                    <div>
-                        <h1 className="text-xl md:text-2xl font-bold">Olá, {currentUser?.nome?.split(' ')[0]}!</h1>
-                        <p className="text-blue-100 text-xs md:text-sm">Painel do Professor</p>
+            <div className="bg-gradient-to-r from-blue-500 to-emerald-500 text-white p-4 md:p-6 shadow-lg sticky top-0 z-40">
+                <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div className="flex items-center justify-between w-full md:w-auto">
+                        <div>
+                            <h1 className="text-xl md:text-2xl font-bold">Olá, {currentUser?.nome?.split(' ')[0]}!</h1>
+                            <p className="text-blue-100 text-xs md:text-sm">Painel do Professor</p>
+                        </div>
+                        <button onClick={handleLogout} className="md:hidden p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors">
+                            <SignOut size={20} />
+                        </button>
                     </div>
-                    <button onClick={handleLogout} className="p-2 md:px-4 md:py-2 bg-white/20 hover:bg-white/30 rounded-full md:rounded-xl transition-colors flex items-center gap-2">
+
+                    {/* Desktop Navigation */}
+                    <div className="hidden md:flex items-center gap-2 bg-white/10 p-1 rounded-xl backdrop-blur-sm">
+                        <button onClick={() => setActiveTab('students')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'students' ? 'bg-white text-blue-600 shadow-sm' : 'text-white hover:bg-white/10'}`}>
+                            Alunos
+                        </button>
+                        <button onClick={() => setActiveTab('messages')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'messages' ? 'bg-white text-blue-600 shadow-sm' : 'text-white hover:bg-white/10'}`}>
+                            Mensagens
+                        </button>
+                        <button onClick={() => setActiveTab('cameras')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'cameras' ? 'bg-white text-blue-600 shadow-sm' : 'text-white hover:bg-white/10'}`}>
+                            Câmeras
+                        </button>
+                        <button onClick={() => setActiveTab('busca-segura')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'busca-segura' ? 'bg-white text-blue-600 shadow-sm' : 'text-white hover:bg-white/10'}`}>
+                            Busca Segura
+                        </button>
+                        <button onClick={() => setActiveTab('profile')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'profile' ? 'bg-white text-blue-600 shadow-sm' : 'text-white hover:bg-white/10'}`}>
+                            Perfil
+                        </button>
+                    </div>
+
+                    <button onClick={handleLogout} className="hidden md:flex px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl transition-colors items-center gap-2">
                         <SignOut size={20} />
-                        <span className="hidden md:inline font-medium">Sair</span>
+                        <span className="font-medium">Sair</span>
                     </button>
                 </div>
             </div>
