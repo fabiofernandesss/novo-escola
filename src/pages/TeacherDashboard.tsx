@@ -117,12 +117,24 @@ const TeacherDashboard: React.FC = () => {
         // Cleanup interval on tab change or unmount
         if (activeTab !== 'cameras') {
             if (cameraInterval.current) clearInterval(cameraInterval.current);
+            destroyAllCameras();
+            setCameras([]); // Force clean state when leaving tab
         }
 
         return () => {
             if (cameraInterval.current) clearInterval(cameraInterval.current);
+            destroyAllCameras();
         };
     }, [activeTab, escolaId]);
+
+    const destroyAllCameras = () => {
+        Object.values(cameraRefs.current).forEach(({ hls }) => {
+            if (hls) {
+                hls.destroy();
+            }
+        });
+        cameraRefs.current = {};
+    };
 
     const getMediaUrl = (mediaUrl?: string) => {
         if (!mediaUrl) return '';
