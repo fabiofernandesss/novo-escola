@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { User as UserIcon, ChatCircle, ShieldCheck, SignOut, X, Plus, Pencil, Trash, Play, Stop, Phone, IdentificationCard, Camera } from 'phosphor-react';
+import { User as UserIcon, ChatCircle, ShieldCheck, SignOut, X, Plus, Pencil, Trash, Play, Stop, Phone, IdentificationCard, Camera, House, Users, ClockCounterClockwise } from 'phosphor-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Hls from 'hls.js';
@@ -55,6 +55,16 @@ type CameraType = {
     escola_id?: string;
 };
 
+type DailyLog = {
+    dia: string;
+    nome_aluno: string;
+    tipo_frequencia: string;
+    entrada: string;
+    saida: string;
+    tempo_na_escola_formatado: string;
+    url_foto_aluno?: string;
+};
+
 // Helper Icon
 const CheckCircle = ({ size }: { size: number }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -68,7 +78,7 @@ const TeacherDashboard: React.FC = () => {
     const { confirm } = useConfirm();
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [escolaId, setEscolaId] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'students' | 'messages' | 'cameras' | 'busca-segura' | 'profile'>('students');
+    const [activeTab, setActiveTab] = useState<'dados' | 'students' | 'messages' | 'cameras' | 'busca-segura' | 'profile'>('dados');
     const [loading, setLoading] = useState(true);
 
     // Students State
@@ -91,6 +101,9 @@ const TeacherDashboard: React.FC = () => {
 
     // Busca Segura State
     const [buscaSeguraRequests, setBuscaSeguraRequests] = useState<BuscaSeguraRequest[]>([]);
+
+    // Logs State
+    const [logs, setLogs] = useState<DailyLog[]>([]);
 
     // Profile State
     const [editingName, setEditingName] = useState('');
@@ -115,6 +128,7 @@ const TeacherDashboard: React.FC = () => {
                 cameraInterval.current = setInterval(refreshCameraStreams, 30000); // Auto-refresh streams
             }
             else if (activeTab === 'busca-segura') fetchBuscaSegura();
+            else if (activeTab === 'dados') fetchLogs();
         }
 
         // Cleanup interval on tab change or unmount
@@ -143,6 +157,33 @@ const TeacherDashboard: React.FC = () => {
         if (!mediaUrl) return '';
         if (mediaUrl.startsWith('http')) return mediaUrl;
         return `${SUPABASE_URL}/storage/v1/object/public/mensagens-media/${mediaUrl}`;
+    };
+
+    const formatTime = (dateString: string) => {
+        if (!dateString) return '--:--';
+        if (dateString.includes('T')) return dateString.split('T')[1].substring(0, 5);
+        if (dateString.includes(':')) return dateString.substring(0, 5);
+        return dateString;
+    };
+
+    const fetchLogs = async () => {
+        if (!escolaId) return;
+
+        // Fetch student names to filter logs
+        const { data: schoolStudents } = await supabase.from('alunos').select('nome').eq('escola_id', escolaId);
+        const studentNames = schoolStudents?.map(s => s.nome) || [];
+
+        if (studentNames.length > 0) {
+            const { data } = await supabase
+                .from('frequencia_diaria')
+                .select('*')
+                .in('nome_aluno', studentNames)
+                .order('dia', { ascending: false })
+                .limit(50);
+            setLogs(data || []);
+        } else {
+            setLogs([]);
+        }
     };
 
     const fetchUserAndSchool = async () => {
@@ -492,6 +533,100 @@ const TeacherDashboard: React.FC = () => {
             {/* Content */}
             <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
 
+                {/* Dados Tab */}
+                {activeTab === 'dados' && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                        {/* Horizontal Menu (Scrollable) */}
+                        <div className="flex gap-4 overflow-x-auto pb-4 px-2 -mx-4 md:mx-0 md:px-0 scrollbar-hide">
+                            <button onClick={() => setActiveTab('students')} className="flex flex-col items-center gap-2 min-w-[30%] md:min-w-[120px] p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all shrink-0">
+                                <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                                    <Users size={24} weight="bold" />
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">Alunos</span>
+                            </button>
+                            <button onClick={() => setActiveTab('messages')} className="flex flex-col items-center gap-2 min-w-[30%] md:min-w-[120px] p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all shrink-0">
+                                <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-600">
+                                    <ChatCircle size={24} weight="bold" />
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">Mensagens</span>
+                            </button>
+                            <button onClick={() => setActiveTab('cameras')} className="flex flex-col items-center gap-2 min-w-[30%] md:min-w-[120px] p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all shrink-0">
+                                <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                    <Camera size={24} weight="bold" />
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">Câmeras</span>
+                            </button>
+                            <button onClick={() => setActiveTab('busca-segura')} className="flex flex-col items-center gap-2 min-w-[30%] md:min-w-[120px] p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all shrink-0">
+                                <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center text-orange-600">
+                                    <ShieldCheck size={24} weight="bold" />
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">Busca</span>
+                            </button>
+                            <button onClick={() => setActiveTab('profile')} className="flex flex-col items-center gap-2 min-w-[30%] md:min-w-[120px] p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all shrink-0">
+                                <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-600">
+                                    <UserIcon size={24} weight="bold" />
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">Perfil</span>
+                            </button>
+                        </div>
+
+                        {/* Logs Section */}
+                        <div className="space-y-4">
+                            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 px-2">
+                                <ClockCounterClockwise size={24} className="text-blue-600" />
+                                Logs da Escola (Dados)
+                            </h2>
+                            {logs && logs.length > 0 ? (
+                                <div className="space-y-3">
+                                    {logs.map((log, index) => (
+                                        <div key={`${log.dia}-${index}`} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                                            <div className="flex items-start gap-3">
+                                                {log.url_foto_aluno ? (
+                                                    <img src={log.url_foto_aluno} alt="" className="w-14 h-14 rounded-full object-cover border border-gray-100" />
+                                                ) : (
+                                                    <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+                                                        <UserIcon size={24} weight="fill" />
+                                                    </div>
+                                                )}
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <p className="font-bold text-gray-900 capitalize">
+                                                                {new Date(log.dia + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
+                                                            </p>
+                                                            <p className="text-sm text-gray-600 font-medium">{log.nome_aluno}</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="mt-2 grid grid-cols-2 gap-3">
+                                                        <div className="bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
+                                                            <p className="text-[10px] text-green-600 font-bold uppercase tracking-wider">Entrada</p>
+                                                            <p className="text-green-900 font-mono text-base font-bold">
+                                                                {log.entrada ? formatTime(log.entrada) : '--:--'}
+                                                            </p>
+                                                        </div>
+                                                        <div className="bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">
+                                                            <p className="text-[10px] text-red-600 font-bold uppercase tracking-wider">Saída</p>
+                                                            <p className="text-red-900 font-mono text-base font-bold">
+                                                                {log.saida && log.saida !== log.entrada ? formatTime(log.saida) : '--:--'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-2xl shadow-sm p-8 text-center border border-dashed border-gray-200">
+                                    <ClockCounterClockwise size={48} className="mx-auto text-gray-300 mb-2" />
+                                    <p className="text-gray-500">Nenhum registro de frequência encontrado hoje.</p>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+
                 {/* Students Tab */}
                 {activeTab === 'students' && (
                     <div className="space-y-4">
@@ -699,25 +834,25 @@ const TeacherDashboard: React.FC = () => {
             {/* Bottom Navigation Bar (Mobile Only) */}
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg md:hidden z-30">
                 <div className="flex justify-around items-center py-2">
-                    <button onClick={() => setActiveTab('students')} className={`flex flex-col items-center gap-1 px-3 py-2 transition-colors ${activeTab === 'students' ? 'text-blue-600' : 'text-gray-500'}`}>
-                        <UserIcon size={24} weight={activeTab === 'students' ? 'fill' : 'regular'} />
-                        <span className="text-xs font-medium">Alunos</span>
+                    <button onClick={() => setActiveTab('dados')} className={`flex flex-col items-center gap-1 px-3 py-2 transition-colors ${activeTab === 'dados' ? 'text-blue-600' : 'text-gray-400'}`}>
+                        <House size={activeTab === 'dados' ? 28 : 24} weight={activeTab === 'dados' ? 'fill' : 'regular'} />
+                        <span className={`text-[10px] font-medium ${activeTab === 'dados' ? 'font-bold' : ''}`}>Início</span>
                     </button>
-                    <button onClick={() => setActiveTab('messages')} className={`flex flex-col items-center gap-1 px-3 py-2 transition-colors ${activeTab === 'messages' ? 'text-blue-600' : 'text-gray-500'}`}>
-                        <ChatCircle size={24} weight={activeTab === 'messages' ? 'fill' : 'regular'} />
-                        <span className="text-xs font-medium">Mensagens</span>
+                    <button onClick={() => setActiveTab('students')} className={`flex flex-col items-center gap-1 px-3 py-2 transition-colors ${activeTab === 'students' ? 'text-blue-600' : 'text-gray-400'}`}>
+                        <Users size={activeTab === 'students' ? 28 : 24} weight={activeTab === 'students' ? 'fill' : 'regular'} />
+                        <span className={`text-[10px] font-medium ${activeTab === 'students' ? 'font-bold' : ''}`}>Alunos</span>
                     </button>
-                    <button onClick={() => setActiveTab('cameras')} className={`flex flex-col items-center gap-1 px-3 py-2 transition-colors ${activeTab === 'cameras' ? 'text-blue-600' : 'text-gray-500'}`}>
-                        <Camera size={24} weight={activeTab === 'cameras' ? 'fill' : 'regular'} />
-                        <span className="text-xs font-medium">Câmeras</span>
+                    <button onClick={() => setActiveTab('messages')} className={`flex flex-col items-center gap-1 px-3 py-2 transition-colors ${activeTab === 'messages' ? 'text-blue-600' : 'text-gray-400'}`}>
+                        <ChatCircle size={activeTab === 'messages' ? 28 : 24} weight={activeTab === 'messages' ? 'fill' : 'regular'} />
+                        <span className={`text-[10px] font-medium ${activeTab === 'messages' ? 'font-bold' : ''}`}>Msgs</span>
                     </button>
-                    <button onClick={() => setActiveTab('busca-segura')} className={`flex flex-col items-center gap-1 px-3 py-2 transition-colors ${activeTab === 'busca-segura' ? 'text-blue-600' : 'text-gray-500'}`}>
-                        <ShieldCheck size={24} weight={activeTab === 'busca-segura' ? 'fill' : 'regular'} />
-                        <span className="text-xs font-medium">Busca</span>
+                    <button onClick={() => setActiveTab('cameras')} className={`flex flex-col items-center gap-1 px-3 py-2 transition-colors ${activeTab === 'cameras' ? 'text-blue-600' : 'text-gray-400'}`}>
+                        <Camera size={activeTab === 'cameras' ? 28 : 24} weight={activeTab === 'cameras' ? 'fill' : 'regular'} />
+                        <span className={`text-[10px] font-medium ${activeTab === 'cameras' ? 'font-bold' : ''}`}>Câmeras</span>
                     </button>
-                    <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-1 px-3 py-2 transition-colors ${activeTab === 'profile' ? 'text-blue-600' : 'text-gray-500'}`}>
-                        <UserIcon size={24} weight={activeTab === 'profile' ? 'fill' : 'regular'} />
-                        <span className="text-xs font-medium">Perfil</span>
+                    <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-1 px-3 py-2 transition-colors ${activeTab === 'profile' ? 'text-blue-600' : 'text-gray-400'}`}>
+                        <UserIcon size={activeTab === 'profile' ? 28 : 24} weight={activeTab === 'profile' ? 'fill' : 'regular'} />
+                        <span className={`text-[10px] font-medium ${activeTab === 'profile' ? 'font-bold' : ''}`}>Perfil</span>
                     </button>
                 </div>
             </div>
