@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { User as UserIcon, ChatCircle, ShieldCheck, SignOut, X, Plus, Pencil, Trash, Play, Stop, Phone, IdentificationCard, Camera, House, Users, ClockCounterClockwise } from 'phosphor-react';
+import { User as UserIcon, ChatCircle, ShieldCheck, SignOut, X, Plus, Pencil, Trash, Play, Stop, Phone, IdentificationCard, Camera, House, Users, ClockCounterClockwise, Brain } from 'phosphor-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Hls from 'hls.js';
@@ -104,6 +104,7 @@ const TeacherDashboard: React.FC = () => {
 
     // Logs State
     const [logs, setLogs] = useState<DailyLog[]>([]);
+    const [dadosView, setDadosView] = useState<'logs' | 'ia' | 'busca'>('logs');
 
     // Profile State
     const [editingName, setEditingName] = useState('');
@@ -127,8 +128,10 @@ const TeacherDashboard: React.FC = () => {
                 fetchCameras();
                 cameraInterval.current = setInterval(refreshCameraStreams, 30000); // Auto-refresh streams
             }
-            else if (activeTab === 'busca-segura') fetchBuscaSegura();
-            else if (activeTab === 'dados') fetchLogs();
+            else if (activeTab === 'dados') {
+                if (dadosView === 'logs') fetchLogs();
+                else if (dadosView === 'busca') fetchBuscaSegura();
+            }
         }
 
         // Cleanup interval on tab change or unmount
@@ -142,7 +145,7 @@ const TeacherDashboard: React.FC = () => {
             if (cameraInterval.current) clearInterval(cameraInterval.current);
             destroyAllCameras();
         };
-    }, [activeTab, escolaId]);
+    }, [activeTab, escolaId, dadosView]);
 
     const destroyAllCameras = () => {
         Object.values(cameraRefs.current).forEach(({ hls }) => {
@@ -515,9 +518,6 @@ const TeacherDashboard: React.FC = () => {
                         <button onClick={() => setActiveTab('cameras')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'cameras' ? 'bg-white text-blue-600 shadow-sm' : 'text-white hover:bg-white/10'}`}>
                             Câmeras
                         </button>
-                        <button onClick={() => setActiveTab('busca-segura')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'busca-segura' ? 'bg-white text-blue-600 shadow-sm' : 'text-white hover:bg-white/10'}`}>
-                            Busca Segura
-                        </button>
                         <button onClick={() => setActiveTab('profile')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'profile' ? 'bg-white text-blue-600 shadow-sm' : 'text-white hover:bg-white/10'}`}>
                             Perfil
                         </button>
@@ -533,97 +533,140 @@ const TeacherDashboard: React.FC = () => {
             {/* Content */}
             <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
 
-                {/* Dados Tab */}
+                {/* Dados Tab (Dados/Logs/IA/Busca) */}
                 {activeTab === 'dados' && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                        {/* Horizontal Menu (Scrollable) */}
+                        {/* Internal Sub-Menu */}
                         <div className="flex gap-4 overflow-x-auto pb-4 px-2 -mx-4 md:mx-0 md:px-0 scrollbar-hide">
-                            <button onClick={() => setActiveTab('students')} className="flex flex-col items-center gap-2 min-w-[30%] md:min-w-[120px] p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all shrink-0">
-                                <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                                    <Users size={24} weight="bold" />
+                            <button onClick={() => setDadosView('logs')} className={`flex flex-col items-center gap-2 min-w-[30%] md:min-w-[120px] p-4 rounded-2xl shadow-sm transition-all shrink-0 ${dadosView === 'logs' ? 'bg-blue-50 border-2 border-blue-200' : 'bg-white hover:shadow-md'}`}>
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${dadosView === 'logs' ? 'bg-blue-100 text-blue-600' : 'bg-gray-50 text-gray-500'}`}>
+                                    <ClockCounterClockwise size={24} weight="bold" />
                                 </div>
-                                <span className="text-sm font-medium text-gray-700">Alunos</span>
+                                <span className={`text-sm font-medium ${dadosView === 'logs' ? 'text-blue-700' : 'text-gray-700'}`}>Logs</span>
                             </button>
-                            <button onClick={() => setActiveTab('messages')} className="flex flex-col items-center gap-2 min-w-[30%] md:min-w-[120px] p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all shrink-0">
-                                <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-600">
-                                    <ChatCircle size={24} weight="bold" />
+                            <button onClick={() => setDadosView('ia')} className={`flex flex-col items-center gap-2 min-w-[30%] md:min-w-[120px] p-4 rounded-2xl shadow-sm transition-all shrink-0 ${dadosView === 'ia' ? 'bg-purple-50 border-2 border-purple-200' : 'bg-white hover:shadow-md'}`}>
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${dadosView === 'ia' ? 'bg-purple-100 text-purple-600' : 'bg-gray-50 text-gray-500'}`}>
+                                    <Brain size={24} weight="bold" />
                                 </div>
-                                <span className="text-sm font-medium text-gray-700">Mensagens</span>
+                                <span className={`text-sm font-medium ${dadosView === 'ia' ? 'text-purple-700' : 'text-gray-700'}`}>Perguntas e IA</span>
                             </button>
-                            <button onClick={() => setActiveTab('cameras')} className="flex flex-col items-center gap-2 min-w-[30%] md:min-w-[120px] p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all shrink-0">
-                                <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
-                                    <Camera size={24} weight="bold" />
-                                </div>
-                                <span className="text-sm font-medium text-gray-700">Câmeras</span>
-                            </button>
-                            <button onClick={() => setActiveTab('busca-segura')} className="flex flex-col items-center gap-2 min-w-[30%] md:min-w-[120px] p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all shrink-0">
-                                <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center text-orange-600">
+                            <button onClick={() => setDadosView('busca')} className={`flex flex-col items-center gap-2 min-w-[30%] md:min-w-[120px] p-4 rounded-2xl shadow-sm transition-all shrink-0 ${dadosView === 'busca' ? 'bg-orange-50 border-2 border-orange-200' : 'bg-white hover:shadow-md'}`}>
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${dadosView === 'busca' ? 'bg-orange-100 text-orange-600' : 'bg-gray-50 text-gray-500'}`}>
                                     <ShieldCheck size={24} weight="bold" />
                                 </div>
-                                <span className="text-sm font-medium text-gray-700">Busca</span>
-                            </button>
-                            <button onClick={() => setActiveTab('profile')} className="flex flex-col items-center gap-2 min-w-[30%] md:min-w-[120px] p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all shrink-0">
-                                <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-600">
-                                    <UserIcon size={24} weight="bold" />
-                                </div>
-                                <span className="text-sm font-medium text-gray-700">Perfil</span>
+                                <span className={`text-sm font-medium ${dadosView === 'busca' ? 'text-orange-700' : 'text-gray-700'}`}>Busca Segura</span>
                             </button>
                         </div>
 
-                        {/* Logs Section */}
-                        <div className="space-y-4">
-                            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 px-2">
-                                <ClockCounterClockwise size={24} className="text-blue-600" />
-                                Logs da Escola (Dados)
-                            </h2>
-                            {logs && logs.length > 0 ? (
-                                <div className="space-y-3">
-                                    {logs.map((log, index) => (
-                                        <div key={`${log.dia}-${index}`} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                                            <div className="flex items-start gap-3">
-                                                {log.url_foto_aluno ? (
-                                                    <img src={log.url_foto_aluno} alt="" className="w-14 h-14 rounded-full object-cover border border-gray-100" />
-                                                ) : (
-                                                    <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
-                                                        <UserIcon size={24} weight="fill" />
-                                                    </div>
-                                                )}
-                                                <div className="flex-1">
-                                                    <div className="flex justify-between items-start">
-                                                        <div>
-                                                            <p className="font-bold text-gray-900 capitalize">
-                                                                {new Date(log.dia + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
-                                                            </p>
-                                                            <p className="text-sm text-gray-600 font-medium">{log.nome_aluno}</p>
-                                                        </div>
-                                                    </div>
+                        {/* Content Area */}
 
-                                                    <div className="mt-2 grid grid-cols-2 gap-3">
-                                                        <div className="bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
-                                                            <p className="text-[10px] text-green-600 font-bold uppercase tracking-wider">Entrada</p>
-                                                            <p className="text-green-900 font-mono text-base font-bold">
-                                                                {log.entrada ? formatTime(log.entrada) : '--:--'}
-                                                            </p>
+                        {/* View: Logs */}
+                        {dadosView === 'logs' && (
+                            <div className="space-y-4">
+                                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 px-2">
+                                    <ClockCounterClockwise size={24} className="text-blue-600" />
+                                    Logs da Escola
+                                </h2>
+                                {logs && logs.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {logs.map((log, index) => (
+                                            <div key={`${log.dia}-${index}`} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                                                <div className="flex items-start gap-3">
+                                                    {log.url_foto_aluno ? (
+                                                        <img src={log.url_foto_aluno} alt="" className="w-14 h-14 rounded-full object-cover border border-gray-100" />
+                                                    ) : (
+                                                        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+                                                            <UserIcon size={24} weight="fill" />
                                                         </div>
-                                                        <div className="bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">
-                                                            <p className="text-[10px] text-red-600 font-bold uppercase tracking-wider">Saída</p>
-                                                            <p className="text-red-900 font-mono text-base font-bold">
-                                                                {log.saida && log.saida !== log.entrada ? formatTime(log.saida) : '--:--'}
-                                                            </p>
+                                                    )}
+                                                    <div className="flex-1">
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <p className="font-bold text-gray-900 capitalize">
+                                                                    {new Date(log.dia + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
+                                                                </p>
+                                                                <p className="text-sm text-gray-600 font-medium">{log.nome_aluno}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="mt-2 grid grid-cols-2 gap-3">
+                                                            <div className="bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
+                                                                <p className="text-[10px] text-green-600 font-bold uppercase tracking-wider">Entrada</p>
+                                                                <p className="text-green-900 font-mono text-base font-bold">
+                                                                    {log.entrada ? formatTime(log.entrada) : '--:--'}
+                                                                </p>
+                                                            </div>
+                                                            <div className="bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">
+                                                                <p className="text-[10px] text-red-600 font-bold uppercase tracking-wider">Saída</p>
+                                                                <p className="text-red-900 font-mono text-base font-bold">
+                                                                    {log.saida && log.saida !== log.entrada ? formatTime(log.saida) : '--:--'}
+                                                                </p>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="bg-white rounded-2xl shadow-sm p-8 text-center border border-dashed border-gray-200">
+                                        <ClockCounterClockwise size={48} className="mx-auto text-gray-300 mb-2" />
+                                        <p className="text-gray-500">Nenhum registro de frequência encontrado hoje.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* View: IA */}
+                        {dadosView === 'ia' && (
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+                                <div className="w-20 h-20 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-4 text-purple-600">
+                                    <Brain size={40} weight="duotone" />
+                                </div>
+                                <h2 className="text-2xl font-bold text-gray-900 mb-2">Perguntas e IA</h2>
+                                <p className="text-gray-500 mb-6 max-w-md mx-auto">Em breve você terá acesso a uma Inteligência Artificial exclusiva para auxiliar nas atividades escolares e dúvidas do dia a dia.</p>
+                                <button className="px-6 py-2 bg-gray-100 text-gray-400 rounded-full font-medium cursor-not-allowed">Funcionalidade em desenvolvimento</button>
+                            </div>
+                        )}
+
+                        {/* View: Busca Segura */}
+                        {dadosView === 'busca' && (
+                            <div className="space-y-4">
+                                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 px-2">
+                                    <ShieldCheck size={24} className="text-orange-600" />
+                                    Solicitações de Busca
+                                </h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {buscaSeguraRequests.map((req) => (
+                                        <div key={req.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 relative overflow-hidden">
+                                            <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-xs font-bold uppercase tracking-wider ${req.status === 'pendente' ? 'bg-yellow-100 text-yellow-700' :
+                                                req.status === 'aprovada' ? 'bg-green-100 text-green-700' :
+                                                    req.status === 'rejeitada' ? 'bg-red-100 text-red-700' :
+                                                        'bg-gray-100 text-gray-700'
+                                                }`}>
+                                                {req.status}
+                                            </div>
+                                            <div className="flex items-center gap-4 mb-3">
+                                                <img src={req.foto_buscador_url} alt={req.nome_buscador} className="w-14 h-14 rounded-full object-cover border-2 border-gray-100" />
+                                                <div>
+                                                    <h3 className="font-bold text-gray-900">{req.nome_buscador}</h3>
+                                                    <p className="text-xs text-gray-500">Doc: {req.doc_buscador}</p>
+                                                </div>
+                                            </div>
+                                            <p className="text-xs text-gray-400 text-right">
+                                                {new Date(req.criado_em).toLocaleString('pt-BR')}
+                                            </p>
                                         </div>
                                     ))}
+                                    {buscaSeguraRequests.length === 0 && (
+                                        <div className="col-span-full text-center py-12 text-gray-500 bg-white rounded-2xl border border-dashed">
+                                            Nenhuma solicitação encontrada.
+                                        </div>
+                                    )}
                                 </div>
-                            ) : (
-                                <div className="bg-white rounded-2xl shadow-sm p-8 text-center border border-dashed border-gray-200">
-                                    <ClockCounterClockwise size={48} className="mx-auto text-gray-300 mb-2" />
-                                    <p className="text-gray-500">Nenhum registro de frequência encontrado hoje.</p>
-                                </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
+
                     </motion.div>
                 )}
 
@@ -774,40 +817,7 @@ const TeacherDashboard: React.FC = () => {
                     </div>
                 )}
 
-                {/* Busca Segura Tab */}
-                {activeTab === 'busca-segura' && (
-                    <div className="space-y-4">
-                        <h2 className="text-xl font-bold text-gray-900">Solicitações de Busca</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {buscaSeguraRequests.map((req) => (
-                                <div key={req.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 relative overflow-hidden">
-                                    <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-xs font-bold uppercase tracking-wider ${req.status === 'pendente' ? 'bg-yellow-100 text-yellow-700' :
-                                        req.status === 'aprovada' ? 'bg-green-100 text-green-700' :
-                                            req.status === 'rejeitada' ? 'bg-red-100 text-red-700' :
-                                                'bg-gray-100 text-gray-700'
-                                        }`}>
-                                        {req.status}
-                                    </div>
-                                    <div className="flex items-center gap-4 mb-3">
-                                        <img src={req.foto_buscador_url} alt={req.nome_buscador} className="w-14 h-14 rounded-full object-cover border-2 border-gray-100" />
-                                        <div>
-                                            <h3 className="font-bold text-gray-900">{req.nome_buscador}</h3>
-                                            <p className="text-xs text-gray-500">Doc: {req.doc_buscador}</p>
-                                        </div>
-                                    </div>
-                                    <p className="text-xs text-gray-400 text-right">
-                                        {new Date(req.criado_em).toLocaleString('pt-BR')}
-                                    </p>
-                                </div>
-                            ))}
-                            {buscaSeguraRequests.length === 0 && (
-                                <div className="col-span-full text-center py-12 text-gray-500 bg-white rounded-2xl border border-dashed">
-                                    Nenhuma solicitação encontrada.
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
+
 
                 {/* Profile Tab */}
                 {activeTab === 'profile' && (
