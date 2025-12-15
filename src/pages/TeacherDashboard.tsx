@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Hls from 'hls.js';
 
+const SUPABASE_URL = 'https://sntyndufbxfzasnqvayc.supabase.co';
+
 type Student = {
     id: string;
     nome: string;
@@ -51,6 +53,14 @@ type CameraType = {
     escola_id?: string;
 };
 
+// Helper Icon
+const CheckCircle = ({ size }: { size: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
+);
+
 const TeacherDashboard: React.FC = () => {
     const navigate = useNavigate();
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -74,6 +84,7 @@ const TeacherDashboard: React.FC = () => {
     const [camerasLoading, setCamerasLoading] = useState(false);
     const [cameraLoadingStates, setCameraLoadingStates] = useState<{ [key: string]: boolean }>({});
     const cameraRefs = useRef<{ [key: string]: { video: HTMLVideoElement | null; hls: Hls | null } }>({});
+    const cameraInterval = useRef<any>(null);
 
     // Busca Segura State
     const [buscaSeguraRequests, setBuscaSeguraRequests] = useState<BuscaSeguraRequest[]>([]);
@@ -96,10 +107,28 @@ const TeacherDashboard: React.FC = () => {
         if (escolaId) {
             if (activeTab === 'students') fetchStudents();
             else if (activeTab === 'messages') fetchMessages();
-            else if (activeTab === 'cameras') fetchCameras();
+            else if (activeTab === 'cameras') {
+                fetchCameras();
+                cameraInterval.current = setInterval(refreshCameraStreams, 30000); // Auto-refresh streams
+            }
             else if (activeTab === 'busca-segura') fetchBuscaSegura();
         }
+
+        // Cleanup interval on tab change or unmount
+        if (activeTab !== 'cameras') {
+            if (cameraInterval.current) clearInterval(cameraInterval.current);
+        }
+
+        return () => {
+            if (cameraInterval.current) clearInterval(cameraInterval.current);
+        };
     }, [activeTab, escolaId]);
+
+    const getMediaUrl = (mediaUrl?: string) => {
+        if (!mediaUrl) return '';
+        if (mediaUrl.startsWith('http')) return mediaUrl;
+        return `${SUPABASE_URL}/storage/v1/object/public/mensagens-media/${mediaUrl}`;
+    };
 
     const fetchUserAndSchool = async () => {
         setLoading(true);
@@ -182,15 +211,78 @@ const TeacherDashboard: React.FC = () => {
 
         setCameras(camerasData || []);
         setCamerasLoading(false);
-
-        // Initialize loading states
-        const initialLoadingStates: { [key: string]: boolean } = {};
-        (camerasData || []).forEach(cam => {
-            initialLoadingStates[cam.id] = true;
-        });
-        setCameraLoadingStates(initialLoadingStates);
     };
 
+    const refreshCameraStreams = () => {
+        // Only refresh HLS streams without destroying DOM
+        Object.entries(cameraRefs.current).forEach(([cameraId, { hls, video }]) => {
+            if (hls && video) {
+                const camera = cameras.find(c => c.id === cameraId);
+                if (camera) {
+                    hls.destroy();
+                    initializeCamera(cameraId, camera.url_m3u8, video);
+                }
+            }
+        });
+    };
+
+    const initializeCamera = (cameraId: string, url: string, videoElement: HTMLVideoElement) => {
+        if (!videoElement) return;
+
+        // Set loading state for this camera
+        setCameraLoadingStates(prev => ({ ...prev, [cameraId]: true }));
+
+        // Auto-hide loading after 30s as fallback
+        const loadingTimeout = setTimeout(() => {
+            setCameraLoadingStates(prev => ({ ...prev, [cameraId]: false }));
+        }, 30000);
+
+        // Use proxy if running on HTTPS and trying to access HTTP camera
+        let src = url;
+        if (window.location.protocol === 'https:' && src.includes('http://78.46.228.35')) {
+            if (src.includes(':8001')) {
+                src = src.replace('http://78.46.228.35:8001', '/camera-proxy-8001');
+            } else if (src.includes(':8002')) {
+                src = src.replace('http://78.46.228.35:8002', '/camera-proxy-8002');
+            }
+        }
+
+        if (Hls.isSupported()) {
+            const hls = new Hls({
+                enableWorker: true,
+                lowLatencyMode: true,
+                backBufferLength: 90,
+                maxBufferLength: 30,
+                maxMaxBufferLength: 600,
+            });
+
+            cameraRefs.current[cameraId] = { video: videoElement, hls };
+
+            hls.loadSource(src);
+            hls.attachMedia(videoElement);
+
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                clearTimeout(loadingTimeout);
+                setCameraLoadingStates(prev => ({ ...prev, [cameraId]: false }));
+                videoElement.play().catch(e => console.error("Error playing:", e));
+            });
+
+            hls.on(Hls.Events.ERROR, (_event, data) => {
+                if (data.fatal) {
+                    clearTimeout(loadingTimeout);
+                    setCameraLoadingStates(prev => ({ ...prev, [cameraId]: false }));
+                }
+            });
+        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+            videoElement.src = src;
+            videoElement.addEventListener('loadedmetadata', () => {
+                clearTimeout(loadingTimeout);
+                setCameraLoadingStates(prev => ({ ...prev, [cameraId]: false }));
+                videoElement.play().catch(e => console.error("Error playing:", e));
+            });
+            cameraRefs.current[cameraId] = { video: videoElement, hls: null };
+        }
+    };
     const fetchBuscaSegura = async () => {
         if (!escolaId) return;
 
@@ -217,55 +309,6 @@ const TeacherDashboard: React.FC = () => {
         setBuscaSeguraRequests(data || []);
     };
 
-    const initializeCamera = (cameraId: string, url: string, videoElement: HTMLVideoElement) => {
-        if (!videoElement) return;
-
-        cameraRefs.current[cameraId] = { video: videoElement, hls: null };
-
-        if (Hls.isSupported()) {
-            // Use proxy if running on HTTPS and trying to access HTTP camera
-            let src = url;
-            if (window.location.protocol === 'https:' && src.includes('http://78.46.228.35')) {
-                if (src.includes(':8001')) {
-                    src = src.replace('http://78.46.228.35:8001', '/camera-proxy-8001');
-                } else if (src.includes(':8002')) {
-                    src = src.replace('http://78.46.228.35:8002', '/camera-proxy-8002');
-                }
-            }
-
-            const hls = new Hls({
-                enableWorker: true,
-                lowLatencyMode: true,
-                backBufferLength: 90,
-            });
-
-            hls.loadSource(src);
-            hls.attachMedia(videoElement);
-
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                videoElement.play().catch(() => { });
-                setTimeout(() => {
-                    setCameraLoadingStates(prev => ({ ...prev, [cameraId]: false }));
-                }, 10000);
-            });
-
-            hls.on(Hls.Events.ERROR, (_event, data) => {
-                if (data.fatal) {
-                    setCameraLoadingStates(prev => ({ ...prev, [cameraId]: false }));
-                }
-            });
-
-            cameraRefs.current[cameraId].hls = hls;
-        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-            videoElement.src = url;
-            videoElement.addEventListener('loadedmetadata', () => {
-                videoElement.play().catch(() => { });
-                setTimeout(() => {
-                    setCameraLoadingStates(prev => ({ ...prev, [cameraId]: false }));
-                }, 10000);
-            });
-        }
-    };
 
     const handleStudentSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -507,9 +550,9 @@ const TeacherDashboard: React.FC = () => {
                                     {msg.media_url && (
                                         <div className="aspect-video bg-black relative">
                                             {msg.tipo?.includes('image') ? (
-                                                <img src={msg.media_url} alt="" className="w-full h-full object-cover" />
+                                                <img src={getMediaUrl(msg.media_url)} alt="" className="w-full h-full object-cover" />
                                             ) : (
-                                                <video src={msg.media_url} controls className="w-full h-full object-contain" />
+                                                <video src={getMediaUrl(msg.media_url)} controls className="w-full h-full object-contain" />
                                             )}
                                         </div>
                                     )}
@@ -783,13 +826,5 @@ const TeacherDashboard: React.FC = () => {
         </div>
     );
 };
-
-// Helper Icon
-const CheckCircle = ({ size }: { size: number }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-        <polyline points="22 4 12 14.01 9 11.01"></polyline>
-    </svg>
-);
 
 export default TeacherDashboard;
