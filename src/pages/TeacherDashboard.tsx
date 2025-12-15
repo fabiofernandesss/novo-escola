@@ -4,6 +4,8 @@ import { User as UserIcon, ChatCircle, ShieldCheck, SignOut, X, Plus, Pencil, Tr
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Hls from 'hls.js';
+import { toast } from 'sonner';
+import { useConfirm } from '../contexts/ConfirmContext';
 
 const SUPABASE_URL = 'https://sntyndufbxfzasnqvayc.supabase.co';
 
@@ -63,6 +65,7 @@ const CheckCircle = ({ size }: { size: number }) => (
 
 const TeacherDashboard: React.FC = () => {
     const navigate = useNavigate();
+    const { confirm } = useConfirm();
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [escolaId, setEscolaId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'students' | 'messages' | 'cameras' | 'busca-segura' | 'profile'>('students');
@@ -176,7 +179,7 @@ const TeacherDashboard: React.FC = () => {
         if (permissao?.referencia_id) {
             setEscolaId(permissao.referencia_id);
         } else {
-            alert('Você não está associado a nenhuma escola. Entre em contato com o administrador.');
+            toast.error('Você não está associado a nenhuma escola. Entre em contato com o administrador.');
         }
 
         setLoading(false);
@@ -335,8 +338,9 @@ const TeacherDashboard: React.FC = () => {
     };
 
     const handleStudentDelete = async (id: string) => {
-        if (window.confirm('Tem certeza que deseja excluir este aluno?')) {
+        if (await confirm({ title: 'Excluir Aluno', message: 'Tem certeza que deseja excluir este aluno?', type: 'danger' })) {
             await supabase.from('alunos').delete().eq('id', id);
+            toast.success('Aluno excluído com sucesso');
             fetchStudents();
         }
     };
@@ -412,7 +416,7 @@ const TeacherDashboard: React.FC = () => {
                 setRecordingTime(prev => prev + 1);
             }, 1000);
         } catch (error) {
-            alert('Erro ao acessar a câmera.');
+            toast.error('Erro ao acessar a câmera.');
         }
     };
 
@@ -428,7 +432,7 @@ const TeacherDashboard: React.FC = () => {
         if (!currentUser) return;
         await supabase.from('usuarios').update({ nome: editingName }).eq('id', currentUser.id);
         setCurrentUser({ ...currentUser, nome: editingName });
-        alert('Perfil atualizado!');
+        toast.success('Perfil atualizado!');
     };
 
     const handleLogout = async () => {

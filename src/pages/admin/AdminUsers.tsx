@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Pencil, Trash, Plus, X, MagnifyingGlass, Funnel } from 'phosphor-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 type User = {
     id: string;
@@ -41,6 +43,7 @@ const AdminUsers: React.FC = () => {
     const [formData, setFormData] = useState<Partial<User>>({});
     const [password, setPassword] = useState('');
     const [creatingAuth, setCreatingAuth] = useState(false);
+    const { confirm } = useConfirm();
 
     // States/Cities API
     const [estados, setEstados] = useState<Estado[]>([]);
@@ -166,14 +169,17 @@ const AdminUsers: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
-        if (window.confirm('Tem certeza que deseja excluir este usuário?')) {
+        if (await confirm({ title: 'Excluir Usuário', message: 'Tem certeza que deseja excluir este usuário?', type: 'danger' })) {
             const { error } = await supabase
                 .from('usuarios')
                 .update({ soft_delete: true })
                 .eq('id', id);
 
-            if (error) alert('Erro ao excluir usuário');
-            else fetchUsers();
+            if (error) toast.error('Erro ao excluir usuário');
+            else {
+                toast.success('Usuário excluído com sucesso');
+                fetchUsers();
+            }
         }
     };
 
@@ -209,15 +215,16 @@ const AdminUsers: React.FC = () => {
                 .eq('id', editingUser.id);
 
             if (error) {
-                alert('Erro ao atualizar usuário: ' + error.message);
+                toast.error('Erro ao atualizar usuário: ' + error.message);
             } else {
+                toast.success('Usuário atualizado com sucesso');
                 setIsModalOpen(false);
                 fetchUsers();
             }
         } else {
             // CREATE new user
             if (!formData.email || !password) {
-                alert('Email e senha são obrigatórios para criar um novo usuário');
+                toast.error('Email e senha são obrigatórios para criar um novo usuário');
                 return;
             }
 
@@ -231,7 +238,7 @@ const AdminUsers: React.FC = () => {
                 });
 
                 if (authError) {
-                    alert('Erro ao criar usuário no Auth: ' + authError.message);
+                    toast.error('Erro ao criar usuário no Auth: ' + authError.message);
                     setCreatingAuth(false);
                     return;
                 }
@@ -258,14 +265,15 @@ const AdminUsers: React.FC = () => {
                         ]);
 
                     if (dbError) {
-                        alert('Erro ao criar perfil do usuário: ' + dbError.message);
+                        toast.error('Erro ao criar perfil do usuário: ' + dbError.message);
                     } else {
+                        toast.success('Usuário criado com sucesso');
                         setIsModalOpen(false);
                         fetchUsers();
                     }
                 }
             } catch (err: any) {
-                alert('Erro: ' + err.message);
+                toast.error('Erro: ' + err.message);
             } finally {
                 setCreatingAuth(false);
             }

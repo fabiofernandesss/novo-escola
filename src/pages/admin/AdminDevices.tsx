@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Pencil, Trash, Plus, X, MagnifyingGlass } from 'phosphor-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 type Device = {
     id: number;
@@ -24,6 +26,7 @@ const AdminDevices: React.FC = () => {
     const [editingDevice, setEditingDevice] = useState<Device | null>(null);
     const [formData, setFormData] = useState<Partial<Device>>({});
     const [searchTerm, setSearchTerm] = useState('');
+    const { confirm } = useConfirm();
 
     useEffect(() => {
         fetchDevices();
@@ -66,10 +69,13 @@ const AdminDevices: React.FC = () => {
     };
 
     const handleDelete = async (id: number) => {
-        if (window.confirm('Tem certeza que deseja excluir este dispositivo?')) {
+        if (await confirm({ title: 'Excluir Dispositivo', message: 'Tem certeza que deseja excluir este dispositivo?', type: 'danger' })) {
             const { error } = await supabase.from('dispositivos').delete().eq('id', id);
-            if (error) alert('Erro ao excluir');
-            else fetchDevices();
+            if (error) toast.error('Erro ao excluir');
+            else {
+                toast.success('Dispositivo excluído');
+                fetchDevices();
+            }
         }
     };
 
@@ -77,12 +83,20 @@ const AdminDevices: React.FC = () => {
         e.preventDefault();
         if (editingDevice) {
             const { error } = await supabase.from('dispositivos').update(formData).eq('id', editingDevice.id);
-            if (error) alert('Erro: ' + error.message);
-            else { setIsModalOpen(false); fetchDevices(); }
+            if (error) toast.error('Erro: ' + error.message);
+            else {
+                toast.success('Dispositivo atualizado');
+                setIsModalOpen(false);
+                fetchDevices();
+            }
         } else {
             const { error } = await supabase.from('dispositivos').insert([formData]);
-            if (error) alert('Erro: ' + error.message);
-            else { setIsModalOpen(false); fetchDevices(); }
+            if (error) toast.error('Erro: ' + error.message);
+            else {
+                toast.success('Dispositivo criado');
+                setIsModalOpen(false);
+                fetchDevices();
+            }
         }
     };
 

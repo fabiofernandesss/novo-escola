@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Pencil, Trash, Plus, X, MagnifyingGlass } from 'phosphor-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 type Class = {
     id: string;
@@ -30,6 +32,7 @@ const AdminClasses: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
+    const { confirm } = useConfirm();
 
     useEffect(() => {
         fetchData();
@@ -112,11 +115,14 @@ const AdminClasses: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
-        if (window.confirm('Tem certeza que deseja excluir esta turma?')) {
+        if (await confirm({ title: 'Excluir Turma', message: 'Tem certeza que deseja excluir esta turma?', type: 'danger' })) {
             const { error } = await supabase.from('turmas').delete().eq('id', id);
 
-            if (error) alert('Erro ao excluir turma');
-            else fetchData();
+            if (error) toast.error('Erro ao excluir turma');
+            else {
+                toast.success('Turma excluída com sucesso');
+                fetchData();
+            }
         }
     };
 
@@ -135,8 +141,9 @@ const AdminClasses: React.FC = () => {
                 .eq('id', editingClass.id);
 
             if (error) {
-                alert('Erro ao atualizar turma: ' + error.message);
+                toast.error('Erro ao atualizar turma: ' + error.message);
             } else {
+                toast.success('Turma atualizada com sucesso');
                 setIsModalOpen(false);
                 fetchData();
             }
@@ -144,8 +151,9 @@ const AdminClasses: React.FC = () => {
             const { error } = await supabase.from('turmas').insert([dataToSave]);
 
             if (error) {
-                alert('Erro ao criar turma: ' + error.message);
+                toast.error('Erro ao criar turma: ' + error.message);
             } else {
+                toast.success('Turma criada com sucesso');
                 setIsModalOpen(false);
                 fetchData();
             }

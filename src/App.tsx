@@ -14,29 +14,35 @@ import AdminDevices from './pages/admin/AdminDevices';
 import AdminCameras from './pages/admin/AdminCameras';
 import AdminStudents from './pages/admin/AdminStudents';
 
+import { Toaster } from 'sonner';
+import { ConfirmProvider } from './contexts/ConfirmContext';
+
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/awaiting-approval" element={<AwaitingApproval />} />
-        <Route path="/responsavel" element={<ResponsibleDashboard />} />
-        <Route path="/professor" element={<TeacherDashboard />} />
+    <ConfirmProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/awaiting-approval" element={<AwaitingApproval />} />
+          <Route path="/responsavel" element={<ResponsibleDashboard />} />
+          <Route path="/professor" element={<TeacherDashboard />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="usuarios" element={<AdminUsers />} />
-          <Route path="escolas" element={<AdminSchools />} />
-          <Route path="turmas" element={<AdminClasses />} />
-          <Route path="series" element={<AdminGrades />} />
-          <Route path="dispositivos" element={<AdminDevices />} />
-          <Route path="cameras" element={<AdminCameras />} />
-          <Route path="alunos" element={<AdminStudents />} />
-        </Route>
-      </Routes>
-    </Router>
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="usuarios" element={<AdminUsers />} />
+            <Route path="escolas" element={<AdminSchools />} />
+            <Route path="turmas" element={<AdminClasses />} />
+            <Route path="series" element={<AdminGrades />} />
+            <Route path="dispositivos" element={<AdminDevices />} />
+            <Route path="cameras" element={<AdminCameras />} />
+            <Route path="alunos" element={<AdminStudents />} />
+          </Route>
+        </Routes>
+      </Router>
+      <Toaster position="top-center" richColors />
+    </ConfirmProvider>
   );
 }
 

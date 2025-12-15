@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Pencil, Trash, Plus, X, MagnifyingGlass } from 'phosphor-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 type Grade = {
     id: string;
@@ -18,6 +20,7 @@ const AdminGrades: React.FC = () => {
     const [editingGrade, setEditingGrade] = useState<Grade | null>(null);
     const [formData, setFormData] = useState<Partial<Grade>>({});
     const [searchTerm, setSearchTerm] = useState('');
+    const { confirm } = useConfirm();
 
     useEffect(() => {
         fetchGrades();
@@ -63,10 +66,13 @@ const AdminGrades: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
-        if (window.confirm('Tem certeza que deseja excluir esta série?')) {
+        if (await confirm({ title: 'Excluir Série', message: 'Tem certeza que deseja excluir esta série?', type: 'danger' })) {
             const { error } = await supabase.from('series').delete().eq('id', id);
-            if (error) alert('Erro ao excluir série');
-            else fetchGrades();
+            if (error) toast.error('Erro ao excluir série');
+            else {
+                toast.success('Série excluída com sucesso');
+                fetchGrades();
+            }
         }
     };
 
@@ -81,12 +87,20 @@ const AdminGrades: React.FC = () => {
 
         if (editingGrade) {
             const { error } = await supabase.from('series').update(dataToSave).eq('id', editingGrade.id);
-            if (error) alert('Erro: ' + error.message);
-            else { setIsModalOpen(false); fetchGrades(); }
+            if (error) toast.error('Erro: ' + error.message);
+            else {
+                toast.success('Série atualizada com sucesso');
+                setIsModalOpen(false);
+                fetchGrades();
+            }
         } else {
             const { error } = await supabase.from('series').insert([dataToSave]);
-            if (error) alert('Erro: ' + error.message);
-            else { setIsModalOpen(false); fetchGrades(); }
+            if (error) toast.error('Erro: ' + error.message);
+            else {
+                toast.success('Série criada com sucesso');
+                setIsModalOpen(false);
+                fetchGrades();
+            }
         }
     };
 

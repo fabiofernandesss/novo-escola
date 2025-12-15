@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Pencil, Trash, Plus, X, MagnifyingGlass } from 'phosphor-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 type Student = {
     id: string;
@@ -34,6 +36,7 @@ const AdminStudents: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
+    const { confirm } = useConfirm();
 
     useEffect(() => {
         fetchStudents();
@@ -81,10 +84,13 @@ const AdminStudents: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
-        if (window.confirm('Tem certeza que deseja excluir este aluno?')) {
+        if (await confirm({ title: 'Excluir Aluno', message: 'Tem certeza que deseja excluir este aluno?', type: 'danger' })) {
             const { error } = await supabase.from('alunos').delete().eq('id', id);
-            if (error) alert('Erro ao excluir aluno');
-            else fetchStudents();
+            if (error) toast.error('Erro ao excluir aluno');
+            else {
+                toast.success('Aluno excluído com sucesso');
+                fetchStudents();
+            }
         }
     };
 
@@ -92,12 +98,20 @@ const AdminStudents: React.FC = () => {
         e.preventDefault();
         if (editingStudent) {
             const { error } = await supabase.from('alunos').update(formData).eq('id', editingStudent.id);
-            if (error) alert('Erro: ' + error.message);
-            else { setIsModalOpen(false); fetchStudents(); }
+            if (error) toast.error('Erro: ' + error.message);
+            else {
+                toast.success('Aluno atualizado com sucesso');
+                setIsModalOpen(false);
+                fetchStudents();
+            }
         } else {
             const { error } = await supabase.from('alunos').insert([formData]);
-            if (error) alert('Erro: ' + error.message);
-            else { setIsModalOpen(false); fetchStudents(); }
+            if (error) toast.error('Erro: ' + error.message);
+            else {
+                toast.success('Aluno criado com sucesso');
+                setIsModalOpen(false);
+                fetchStudents();
+            }
         }
     };
 

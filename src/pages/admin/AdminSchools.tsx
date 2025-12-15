@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Pencil, Trash, Plus, X, MagnifyingGlass } from 'phosphor-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 type School = {
     id: string;
@@ -19,6 +21,7 @@ const AdminSchools: React.FC = () => {
     const [editingSchool, setEditingSchool] = useState<School | null>(null);
     const [formData, setFormData] = useState<Partial<School>>({});
     const [searchTerm, setSearchTerm] = useState('');
+    const { confirm } = useConfirm();
 
     useEffect(() => {
         fetchSchools();
@@ -60,10 +63,13 @@ const AdminSchools: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
-        if (window.confirm('Tem certeza que deseja excluir esta escola?')) {
+        if (await confirm({ title: 'Excluir Escola', message: 'Tem certeza que deseja excluir esta escola?', type: 'danger' })) {
             const { error } = await supabase.from('escolas').delete().eq('id', id);
-            if (error) alert('Erro ao excluir escola');
-            else fetchSchools();
+            if (error) toast.error('Erro ao excluir escola');
+            else {
+                toast.success('Escola excluída com sucesso');
+                fetchSchools();
+            }
         }
     };
 
@@ -71,12 +77,20 @@ const AdminSchools: React.FC = () => {
         e.preventDefault();
         if (editingSchool) {
             const { error } = await supabase.from('escolas').update(formData).eq('id', editingSchool.id);
-            if (error) alert('Erro: ' + error.message);
-            else { setIsModalOpen(false); fetchSchools(); }
+            if (error) toast.error('Erro: ' + error.message);
+            else {
+                toast.success('Escola atualizada com sucesso');
+                setIsModalOpen(false);
+                fetchSchools();
+            }
         } else {
             const { error } = await supabase.from('escolas').insert([formData]);
-            if (error) alert('Erro: ' + error.message);
-            else { setIsModalOpen(false); fetchSchools(); }
+            if (error) toast.error('Erro: ' + error.message);
+            else {
+                toast.success('Escola criada com sucesso');
+                setIsModalOpen(false);
+                fetchSchools();
+            }
         }
     };
 

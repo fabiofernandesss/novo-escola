@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase';
 import { Pencil, Trash, Plus, X, MagnifyingGlass, VideoCamera, Eye } from 'phosphor-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Hls from 'hls.js';
+import { toast } from 'sonner';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 type Camera = {
     id: string;
@@ -31,6 +33,7 @@ const AdminCameras: React.FC = () => {
     const [itemsPerPage] = useState(10);
     const videoRef = useRef<HTMLVideoElement>(null);
     const hlsRef = useRef<Hls | null>(null);
+    const { confirm } = useConfirm();
 
     useEffect(() => {
         fetchData();
@@ -174,11 +177,14 @@ const AdminCameras: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
-        if (window.confirm('Tem certeza que deseja excluir esta câmera?')) {
+        if (await confirm({ title: 'Excluir Câmera', message: 'Tem certeza que deseja excluir esta câmera?', type: 'danger' })) {
             const { error } = await supabase.from('cameras').delete().eq('id', id);
 
-            if (error) alert('Erro ao excluir câmera');
-            else fetchData();
+            if (error) toast.error('Erro ao excluir câmera');
+            else {
+                toast.success('Câmera excluída com sucesso');
+                fetchData();
+            }
         }
     };
 
@@ -200,8 +206,9 @@ const AdminCameras: React.FC = () => {
                 .eq('id', editingCamera.id);
 
             if (error) {
-                alert('Erro ao atualizar câmera: ' + error.message);
+                toast.error('Erro ao atualizar câmera: ' + error.message);
             } else {
+                toast.success('Câmera atualizada com sucesso');
                 setIsModalOpen(false);
                 fetchData();
             }
@@ -209,8 +216,9 @@ const AdminCameras: React.FC = () => {
             const { error } = await supabase.from('cameras').insert([dataToSave]);
 
             if (error) {
-                alert('Erro ao criar câmera: ' + error.message);
+                toast.error('Erro ao criar câmera: ' + error.message);
             } else {
+                toast.success('Câmera criada com sucesso');
                 setIsModalOpen(false);
                 fetchData();
             }

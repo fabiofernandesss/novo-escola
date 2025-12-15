@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase';
 import { Camera, ClockCounterClockwise, ChatCircle, House, SignOut, X, CaretLeft, CaretRight, Play, User as UserIcon, PencilSimple, ShieldCheck, Trash, Plus } from 'phosphor-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Hls from 'hls.js';
+import { toast } from 'sonner';
+import { useConfirm } from '../contexts/ConfirmContext';
 
 const SUPABASE_URL = 'https://sntyndufbxfzasnqvayc.supabase.co';
 
@@ -72,6 +74,7 @@ type BuscaSeguraRequest = {
 };
 
 const ResponsibleDashboard: React.FC = () => {
+    const { confirm } = useConfirm();
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [students, setStudents] = useState<Student[]>([]);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -244,7 +247,7 @@ const ResponsibleDashboard: React.FC = () => {
     };
 
     const handleDeleteBuscaSegura = async (id: string) => {
-        if (!confirm('Tem certeza que deseja excluir esta solicitação?')) return;
+        if (!(await confirm({ title: 'Excluir Solicitação', message: 'Tem certeza que deseja excluir esta solicitação?', type: 'danger' }))) return;
 
         const { error } = await supabase
             .from('busca_segura')
@@ -252,8 +255,9 @@ const ResponsibleDashboard: React.FC = () => {
             .eq('id', id);
 
         if (error) {
-            alert('Erro ao excluir solicitação.');
+            toast.error('Erro ao excluir solicitação.');
         } else {
+            toast.success('Solicitação excluída com sucesso');
             setBuscaSeguraRequests(prev => prev.filter(req => req.id !== id));
         }
     };
@@ -355,10 +359,10 @@ const ResponsibleDashboard: React.FC = () => {
             if (updateError) throw updateError;
 
             setCurrentUser({ ...currentUser, foto_perfil: publicUrl });
-            alert('Foto de perfil atualizada!');
+            toast.success('Foto de perfil atualizada!');
         } catch (error) {
             console.error('Error uploading photo:', error);
-            alert('Erro ao atualizar foto de perfil.');
+            toast.error('Erro ao atualizar foto de perfil.');
         } finally {
             setLoading(false);
         }
@@ -398,7 +402,7 @@ const ResponsibleDashboard: React.FC = () => {
 
                 if (blob.size === 0) {
                     console.error("Recorded blob is empty");
-                    alert("Erro na gravação: Vídeo vazio. Tente novamente.");
+                    toast.error("Erro na gravação: Vídeo vazio. Tente novamente.");
                     return;
                 }
 
@@ -419,7 +423,7 @@ const ResponsibleDashboard: React.FC = () => {
 
         } catch (error) {
             console.error('Error accessing camera:', error);
-            alert('Erro ao acessar a câmera. Verifique as permissões.');
+            toast.error('Erro ao acessar a câmera. Verifique as permissões.');
         }
     };
 
@@ -433,7 +437,7 @@ const ResponsibleDashboard: React.FC = () => {
 
     const handleCreateBuscaSegura = async () => {
         if (!newRequest.nome_buscador || !newRequest.doc_buscador || !newRequest.aluno_id || !newRequest.foto_buscador_file || !videoBlob) {
-            alert('Por favor, preencha todos os campos, adicione a foto e grave o vídeo.');
+            toast.warning('Por favor, preencha todos os campos, adicione a foto e grave o vídeo.');
             return;
         }
 
@@ -485,7 +489,7 @@ const ResponsibleDashboard: React.FC = () => {
 
             if (dbError) throw dbError;
 
-            alert('Solicitação criada com sucesso!');
+            toast.success('Solicitação criada com sucesso!');
             setShowBuscaSeguraModal(false);
             setNewRequest({
                 nome_buscador: '',
@@ -499,7 +503,7 @@ const ResponsibleDashboard: React.FC = () => {
 
         } catch (error) {
             console.error('Error creating request:', error);
-            alert('Erro ao criar solicitação: ' + (error as any).message);
+            toast.error('Erro ao criar solicitação: ' + (error as any).message);
         } finally {
             setLoading(false);
         }
@@ -515,9 +519,9 @@ const ResponsibleDashboard: React.FC = () => {
 
         if (!error) {
             setCurrentUser({ ...currentUser, nome: editingName });
-            alert('Perfil atualizado com sucesso!');
+            toast.success('Perfil atualizado com sucesso!');
         } else {
-            alert('Erro ao atualizar perfil.');
+            toast.error('Erro ao atualizar perfil.');
         }
     };
 
