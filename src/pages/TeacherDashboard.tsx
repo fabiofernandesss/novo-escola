@@ -537,24 +537,15 @@ const TeacherDashboard: React.FC = () => {
                 {activeTab === 'dados' && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                         {/* Internal Sub-Menu */}
-                        <div className="flex gap-4 overflow-x-auto pb-4 px-2 -mx-4 md:mx-0 md:px-0 scrollbar-hide">
-                            <button onClick={() => setDadosView('logs')} className={`flex flex-col items-center gap-2 min-w-[30%] md:min-w-[120px] p-4 rounded-2xl shadow-sm transition-all shrink-0 ${dadosView === 'logs' ? 'bg-blue-50 border-2 border-blue-200' : 'bg-white hover:shadow-md'}`}>
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${dadosView === 'logs' ? 'bg-blue-100 text-blue-600' : 'bg-gray-50 text-gray-500'}`}>
-                                    <ClockCounterClockwise size={24} weight="bold" />
-                                </div>
-                                <span className={`text-sm font-medium ${dadosView === 'logs' ? 'text-blue-700' : 'text-gray-700'}`}>Logs</span>
+                        <div className="flex gap-3 overflow-x-auto pb-2 px-2 -mx-4 md:mx-0 md:px-0 scrollbar-hide">
+                            <button onClick={() => setDadosView('logs')} className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap border ${dadosView === 'logs' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                                Logs da Escola
                             </button>
-                            <button onClick={() => setDadosView('ia')} className={`flex flex-col items-center gap-2 min-w-[30%] md:min-w-[120px] p-4 rounded-2xl shadow-sm transition-all shrink-0 ${dadosView === 'ia' ? 'bg-purple-50 border-2 border-purple-200' : 'bg-white hover:shadow-md'}`}>
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${dadosView === 'ia' ? 'bg-purple-100 text-purple-600' : 'bg-gray-50 text-gray-500'}`}>
-                                    <Brain size={24} weight="bold" />
-                                </div>
-                                <span className={`text-sm font-medium ${dadosView === 'ia' ? 'text-purple-700' : 'text-gray-700'}`}>Perguntas e IA</span>
+                            <button onClick={() => setDadosView('ia')} className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap border ${dadosView === 'ia' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                                Perguntas e IA
                             </button>
-                            <button onClick={() => setDadosView('busca')} className={`flex flex-col items-center gap-2 min-w-[30%] md:min-w-[120px] p-4 rounded-2xl shadow-sm transition-all shrink-0 ${dadosView === 'busca' ? 'bg-orange-50 border-2 border-orange-200' : 'bg-white hover:shadow-md'}`}>
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${dadosView === 'busca' ? 'bg-orange-100 text-orange-600' : 'bg-gray-50 text-gray-500'}`}>
-                                    <ShieldCheck size={24} weight="bold" />
-                                </div>
-                                <span className={`text-sm font-medium ${dadosView === 'busca' ? 'text-orange-700' : 'text-gray-700'}`}>Busca Segura</span>
+                            <button onClick={() => setDadosView('busca')} className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap border ${dadosView === 'busca' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                                Busca Segura
                             </button>
                         </div>
 
@@ -619,13 +610,13 @@ const TeacherDashboard: React.FC = () => {
 
                         {/* View: IA */}
                         {dadosView === 'ia' && (
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-                                <div className="w-20 h-20 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-4 text-purple-600">
-                                    <Brain size={40} weight="duotone" />
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center space-y-4">
+                                <div className="flex items-center justify-center gap-2 text-purple-600">
+                                    <Brain size={24} weight="bold" />
+                                    <h2 className="text-xl font-bold text-gray-900">Perguntas e IA</h2>
                                 </div>
-                                <h2 className="text-2xl font-bold text-gray-900 mb-2">Perguntas e IA</h2>
-                                <p className="text-gray-500 mb-6 max-w-md mx-auto">Em breve você terá acesso a uma Inteligência Artificial exclusiva para auxiliar nas atividades escolares e dúvidas do dia a dia.</p>
-                                <button className="px-6 py-2 bg-gray-100 text-gray-400 rounded-full font-medium cursor-not-allowed">Funcionalidade em desenvolvimento</button>
+                                <p className="text-gray-500 max-w-md mx-auto">Em breve você terá acesso a uma Inteligência Artificial exclusiva para auxiliar nas atividades escolares.</p>
+                                <button className="px-5 py-2 bg-gray-50 text-gray-400 text-sm rounded-full font-medium cursor-not-allowed">Em desenvolvimento</button>
                             </div>
                         )}
 
